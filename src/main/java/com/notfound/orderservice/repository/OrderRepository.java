@@ -5,9 +5,13 @@ import com.notfound.orderservice.model.enums.OrderStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Repository
@@ -17,4 +21,24 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     Page<Order> findAllByOrderByOrderDateDesc(Pageable pageable);
 
     List<Order> findByStatus(OrderStatus status);
+
+    @Query("SELECT SUM(o.totalAmount) as totalRevenue, COUNT(o) as totalOrders, " +
+           "(SUM(o.totalAmount) / COUNT(DISTINCT o.customerId)) as avgRevenuePerUser, " +
+           "(SUM(o.totalAmount) / COUNT(o)) as avgOrderValue " +
+           "FROM Order o WHERE o.status != 'CANCELLED' " +
+           "AND (:startDate IS NULL OR o.orderDate >= :startDate) " +
+           "AND (:endDate IS NULL OR o.orderDate <= :endDate)")
+    Map<String, Object> getGlobalStats(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT o.customerId as userId, COUNT(o) as totalOrders, SUM(o.totalAmount) as totalSpent " +
+           "FROM Order o WHERE o.status != 'CANCELLED' GROUP BY o.customerId ORDER BY SUM(o.totalAmount) DESC")
+    Page<Map<String, Object>> getTopSpenders(Pageable pageable);
+
+    @Query("SELECT o.customerId as userId, COUNT(o) as totalOrders, SUM(o.totalAmount) as totalSpent " +
+           "FROM Order o WHERE o.status != 'CANCELLED' GROUP BY o.customerId ORDER BY COUNT(o) DESC")
+    Page<Map<String, Object>> getTopBuyers(Pageable pageable);
+
+    @Query("SELECT o.customerId as userId, COUNT(o) as totalOrders, SUM(o.totalAmount) as totalSpent, MAX(o.orderDate) as lastOrderDate " +
+           "FROM Order o WHERE o.customerId = :userId AND o.status != 'CANCELLED' GROUP BY o.customerId")
+    Map<String, Object> getUserSummary(@Param("userId") String userId);
 }
