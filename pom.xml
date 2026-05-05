@@ -8,7 +8,7 @@
         <version>4.0.5</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.hamtech</groupId>
+    <groupId>com.notfound</groupId>
     <artifactId>bookstore-order-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>bookstore-order-service</name>
