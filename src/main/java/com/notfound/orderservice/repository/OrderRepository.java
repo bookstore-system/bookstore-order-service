@@ -41,4 +41,8 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     @Query("SELECT o.customerId as userId, COUNT(o) as totalOrders, SUM(o.totalAmount) as totalSpent, MAX(o.orderDate) as lastOrderDate " +
            "FROM Order o WHERE o.customerId = :userId AND o.status != 'CANCELLED' GROUP BY o.customerId")
     Map<String, Object> getUserSummary(@Param("userId") String userId);
+
+    @Query("SELECT CASE WHEN COUNT(oi) > 0 THEN true ELSE false END FROM Order o JOIN o.orderItems oi " +
+           "WHERE o.customerId = :userId AND oi.bookId = :bookId AND o.status = :status")
+    boolean existsByCustomerIdAndBookIdAndStatus(@Param("userId") String userId, @Param("bookId") String bookId, @Param("status") OrderStatus status);
 }

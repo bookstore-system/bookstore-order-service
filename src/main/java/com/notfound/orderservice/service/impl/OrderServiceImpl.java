@@ -176,6 +176,11 @@ public class OrderServiceImpl implements OrderService {
                 .lastOrderDate((LocalDateTime) summary.get("lastOrderDate"))
                 .build();
     }
+
+    @Override
+    public boolean hasUserPurchasedAndReceivedBook(String userId, String bookId) {
+        return orderRepository.existsByCustomerIdAndBookIdAndStatus(userId, bookId, OrderStatus.DELIVERED);
+    }
     
     private OrderResponse mapToResponse(Order order) {
         return OrderResponse.builder()

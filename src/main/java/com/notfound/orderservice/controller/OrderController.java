@@ -2,6 +2,7 @@ package com.notfound.orderservice.controller;
 
 import com.notfound.orderservice.model.dto.request.CheckoutRequest;
 import com.notfound.orderservice.model.dto.response.ApiResponse;
+import com.notfound.orderservice.model.dto.response.CheckPurchasedResponse;
 import com.notfound.orderservice.model.dto.response.OrderResponse;
 import com.notfound.orderservice.model.dto.response.StatsResponse;
 import com.notfound.orderservice.model.dto.response.UserOrderSummaryResponse;
@@ -178,5 +179,21 @@ public class OrderController {
     @GetMapping("/users/{userId}/summary")
     public ResponseEntity<UserOrderSummaryResponse> getUserSummary(@PathVariable String userId) {
         return ResponseEntity.ok(orderService.getUserSummary(userId));
+    }
+
+    @GetMapping("/check-purchased")
+    public ResponseEntity<CheckPurchasedResponse> checkPurchased(
+            @RequestParam String userId,
+            @RequestParam String bookId) {
+        boolean isPurchased = orderService.hasUserPurchasedAndReceivedBook(userId, bookId);
+        
+        String message = isPurchased 
+                ? "User has successfully purchased and received this book." 
+                : "User has not purchased or received this book yet.";
+                
+        return ResponseEntity.ok(CheckPurchasedResponse.builder()
+                .isPurchased(isPurchased)
+                .message(message)
+                .build());
     }
 }
