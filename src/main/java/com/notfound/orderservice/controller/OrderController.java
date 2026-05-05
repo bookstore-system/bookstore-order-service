@@ -3,6 +3,9 @@ package com.notfound.orderservice.controller;
 import com.notfound.orderservice.model.dto.request.CheckoutRequest;
 import com.notfound.orderservice.model.dto.response.ApiResponse;
 import com.notfound.orderservice.model.dto.response.OrderResponse;
+import com.notfound.orderservice.model.dto.response.StatsResponse;
+import com.notfound.orderservice.model.dto.response.UserOrderSummaryResponse;
+import com.notfound.orderservice.model.dto.response.UserSpenderResponse;
 import com.notfound.orderservice.model.enums.OrderStatus;
 import com.notfound.orderservice.service.OrderService;
 import jakarta.validation.Valid;
@@ -11,9 +14,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -141,5 +146,37 @@ public class OrderController {
                 .message("Cập nhật trạng thái thành công")
                 .result(updatedOrder)
                 .build());
+    }
+
+    // Statistics Endpoints
+    @GetMapping("/stats")
+    public ResponseEntity<StatsResponse> getGlobalStats(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+        
+        if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        return ResponseEntity.ok(orderService.getGlobalStats(startDate, endDate));
+    }
+
+    @GetMapping("/top-spenders")
+    public ResponseEntity<List<UserSpenderResponse>> getTopSpenders(
+            @RequestParam(defaultValue = "5") int limit) {
+        if (limit < 1) return ResponseEntity.badRequest().build();
+        return ResponseEntity.ok(orderService.getTopSpenders(limit));
+    }
+
+    @GetMapping("/top-buyers")
+    public ResponseEntity<List<UserSpenderResponse>> getTopBuyers(
+            @RequestParam(defaultValue = "5") int limit) {
+        if (limit < 1) return ResponseEntity.badRequest().build();
+        return ResponseEntity.ok(orderService.getTopBuyers(limit));
+    }
+
+    @GetMapping("/users/{userId}/summary")
+    public ResponseEntity<UserOrderSummaryResponse> getUserSummary(@PathVariable String userId) {
+        return ResponseEntity.ok(orderService.getUserSummary(userId));
     }
 }

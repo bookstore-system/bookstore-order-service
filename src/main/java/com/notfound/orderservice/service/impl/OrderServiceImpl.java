@@ -4,6 +4,9 @@ import com.notfound.orderservice.exception.BusinessException;
 import com.notfound.orderservice.exception.ResourceNotFoundException;
 import com.notfound.orderservice.model.dto.request.CheckoutRequest;
 import com.notfound.orderservice.model.dto.response.OrderResponse;
+import com.notfound.orderservice.model.dto.response.StatsResponse;
+import com.notfound.orderservice.model.dto.response.UserOrderSummaryResponse;
+import com.notfound.orderservice.model.dto.response.UserSpenderResponse;
 import com.notfound.orderservice.model.entity.Order;
 import com.notfound.orderservice.model.enums.OrderStatus;
 import com.notfound.orderservice.repository.OrderRepository;
@@ -11,11 +14,16 @@ import com.notfound.orderservice.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -102,6 +110,71 @@ public class OrderServiceImpl implements OrderService {
         return orderRepository.findByStatus(status)
                 .stream().map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public StatsResponse getGlobalStats(LocalDateTime startDate, LocalDateTime endDate) {
+        Map<String, Object> stats = orderRepository.getGlobalStats(startDate, endDate);
+        
+        Long totalOrders = (Long) stats.getOrDefault("totalOrders", 0L);
+        Double totalRevenueD = (Double) stats.get("totalRevenue");
+        Double avgRevenuePerUserD = (Double) stats.get("avgRevenuePerUser");
+        Double avgOrderValueD = (Double) stats.get("avgOrderValue");
+
+        return StatsResponse.builder()
+                .totalRevenue(totalRevenueD != null ? BigDecimal.valueOf(totalRevenueD) : BigDecimal.ZERO)
+                .totalOrders(totalOrders)
+                .avgRevenuePerUser(avgRevenuePerUserD != null ? BigDecimal.valueOf(avgRevenuePerUserD) : BigDecimal.ZERO)
+                .avgOrderValue(avgOrderValueD != null ? BigDecimal.valueOf(avgOrderValueD) : BigDecimal.ZERO)
+                .currency("VND")
+                .build();
+    }
+
+    @Override
+    public List<UserSpenderResponse> getTopSpenders(int limit) {
+        Pageable pageable = PageRequest.of(0, Math.max(1, Math.min(limit, 100)));
+        Page<Map<String, Object>> results = orderRepository.getTopSpenders(pageable);
+        
+        return results.getContent().stream().map(row -> UserSpenderResponse.builder()
+                .userId((String) row.get("userId"))
+                .totalOrders(((Long) row.get("totalOrders")))
+                .totalSpent(BigDecimal.valueOf((Double) row.get("totalSpent")))
+                .build()
+        ).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<UserSpenderResponse> getTopBuyers(int limit) {
+        Pageable pageable = PageRequest.of(0, Math.max(1, Math.min(limit, 100)));
+        Page<Map<String, Object>> results = orderRepository.getTopBuyers(pageable);
+        
+        return results.getContent().stream().map(row -> UserSpenderResponse.builder()
+                .userId((String) row.get("userId"))
+                .totalOrders(((Long) row.get("totalOrders")))
+                .totalSpent(BigDecimal.valueOf((Double) row.get("totalSpent")))
+                .build()
+        ).collect(Collectors.toList());
+    }
+
+    @Override
+    public UserOrderSummaryResponse getUserSummary(String userId) {
+        Map<String, Object> summary = orderRepository.getUserSummary(userId);
+        
+        if (summary == null || summary.isEmpty() || summary.get("userId") == null) {
+            return UserOrderSummaryResponse.builder()
+                    .userId(userId)
+                    .totalOrders(0L)
+                    .totalSpent(BigDecimal.ZERO)
+                    .lastOrderDate(null)
+                    .build();
+        }
+
+        return UserOrderSummaryResponse.builder()
+                .userId((String) summary.get("userId"))
+                .totalOrders((Long) summary.get("totalOrders"))
+                .totalSpent(BigDecimal.valueOf((Double) summary.get("totalSpent")))
+                .lastOrderDate((LocalDateTime) summary.get("lastOrderDate"))
+                .build();
     }
     
     private OrderResponse mapToResponse(Order order) {
