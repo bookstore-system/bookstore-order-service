@@ -35,4 +35,6 @@ public interface OrderService {
     List<UserSpenderResponse> getTopBuyers(int limit);
 
     UserOrderSummaryResponse getUserSummary(String userId);
+
+    boolean hasUserPurchasedAndReceivedBook(String userId, String bookId);
 }
