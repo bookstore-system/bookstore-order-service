@@ -59,6 +59,22 @@ Tất cả các API dành cho khách hàng đều yêu cầu Header **`X-User-Id
    - `/admin/{orderId}/ship` -> Cập nhật thành `SHIPPED`
    - `/admin/{orderId}/deliver` -> Cập nhật thành `DELIVERED`
 
+### API Thống kê & Hỗ trợ Service khác
+7. **[GET] `/api/v1/orders/stats`**
+   - Chức năng: Thống kê tổng quan (doanh thu, tổng đơn hàng, v.v.). Hỗ trợ filter theo `startDate` và `endDate`.
+
+8. **[GET] `/api/v1/orders/admin/stats`**
+   - Chức năng: API cung cấp số liệu mở rộng (Pending, Completed, Cancelled orders) để phục vụ việc generate báo cáo từ AI Service.
+
+9. **[GET] `/api/v1/orders/top-spenders` & `/api/v1/orders/top-buyers`**
+   - Chức năng: Truy xuất danh sách những khách hàng chi tiêu nhiều nhất hoặc order nhiều nhất.
+
+10. **[GET] `/api/v1/orders/users/{userId}/summary`**
+    - Chức năng: Tóm lược thông tin mua hàng (số đơn, số tiền, ngày tạo cuối) của cá nhân một user.
+
+11. **[GET] `/api/v1/orders/check-purchased?userId=...&bookId=...`**
+    - Chức năng: Giao tiếp với **Review Service**. Trả về cờ `isPurchased: true` nếu user đã chọn mua và nhận sách thành công để Review Service kiểm tra quyền đánh giá (chống review rác).
+
 ---
 
 ## 4. Sự phụ thuộc vào các Service Khác (Dependencies)

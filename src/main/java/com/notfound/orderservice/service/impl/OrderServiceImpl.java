@@ -3,6 +3,7 @@ package com.notfound.orderservice.service.impl;
 import com.notfound.orderservice.exception.BusinessException;
 import com.notfound.orderservice.exception.ResourceNotFoundException;
 import com.notfound.orderservice.model.dto.request.CheckoutRequest;
+import com.notfound.orderservice.model.dto.response.AdminStatsResponse;
 import com.notfound.orderservice.model.dto.response.OrderResponse;
 import com.notfound.orderservice.model.dto.response.StatsResponse;
 import com.notfound.orderservice.model.dto.response.UserOrderSummaryResponse;
@@ -180,6 +181,28 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public boolean hasUserPurchasedAndReceivedBook(String userId, String bookId) {
         return orderRepository.existsByCustomerIdAndBookIdAndStatus(userId, bookId, OrderStatus.DELIVERED);
+    }
+
+    @Override
+    public AdminStatsResponse getAdminAiStats() {
+        Map<String, Object> stats = orderRepository.getAdminAiStats();
+
+        Long totalOrders = (Long) stats.getOrDefault("totalOrders", 0L);
+        Double totalRevenueDouble = (Double) stats.get("totalRevenue");
+        BigDecimal totalRevenue = totalRevenueDouble != null ? BigDecimal.valueOf(totalRevenueDouble) : BigDecimal.ZERO;
+
+        Long pendingOrders = (Long) stats.getOrDefault("pendingOrders", 0L);
+        Long completedOrders = (Long) stats.getOrDefault("completedOrders", 0L);
+        Long cancelledOrders = (Long) stats.getOrDefault("cancelledOrders", 0L);
+
+        return AdminStatsResponse.builder()
+                .totalOrders(totalOrders.intValue())
+                .totalRevenue(totalRevenue)
+                .pendingOrders(pendingOrders.intValue())
+                .completedOrders(completedOrders.intValue())
+                .cancelledOrders(cancelledOrders.intValue())
+                .currency("VND")
+                .build();
     }
     
     private OrderResponse mapToResponse(Order order) {

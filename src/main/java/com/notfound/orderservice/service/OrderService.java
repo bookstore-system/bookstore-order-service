@@ -1,6 +1,7 @@
 package com.notfound.orderservice.service;
 
 import com.notfound.orderservice.model.dto.request.CheckoutRequest;
+import com.notfound.orderservice.model.dto.response.AdminStatsResponse;
 import com.notfound.orderservice.model.dto.response.OrderResponse;
 import com.notfound.orderservice.model.dto.response.StatsResponse;
 import com.notfound.orderservice.model.dto.response.UserOrderSummaryResponse;
@@ -35,6 +36,8 @@ public interface OrderService {
     List<UserSpenderResponse> getTopBuyers(int limit);
 
     UserOrderSummaryResponse getUserSummary(String userId);
+
+    AdminStatsResponse getAdminAiStats();
 
     boolean hasUserPurchasedAndReceivedBook(String userId, String bookId);
 }
