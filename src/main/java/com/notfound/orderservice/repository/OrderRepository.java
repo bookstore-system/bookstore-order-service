@@ -42,6 +42,15 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
            "FROM Order o WHERE o.customerId = :userId AND o.status != 'CANCELLED' GROUP BY o.customerId")
     Map<String, Object> getUserSummary(@Param("userId") String userId);
 
+    @Query("SELECT " +
+           "COUNT(o) as totalOrders, " +
+           "SUM(CASE WHEN o.status != 'CANCELLED' THEN o.totalAmount ELSE 0 END) as totalRevenue, " +
+           "SUM(CASE WHEN o.status = 'PENDING' THEN 1 ELSE 0 END) as pendingOrders, " +
+           "SUM(CASE WHEN o.status = 'DELIVERED' THEN 1 ELSE 0 END) as completedOrders, " +
+           "SUM(CASE WHEN o.status = 'CANCELLED' THEN 1 ELSE 0 END) as cancelledOrders " +
+           "FROM Order o")
+    Map<String, Object> getAdminAiStats();
+
     @Query("SELECT CASE WHEN COUNT(oi) > 0 THEN true ELSE false END FROM Order o JOIN o.orderItems oi " +
            "WHERE o.customerId = :userId AND oi.bookId = :bookId AND o.status = :status")
     boolean existsByCustomerIdAndBookIdAndStatus(@Param("userId") String userId, @Param("bookId") String bookId, @Param("status") OrderStatus status);

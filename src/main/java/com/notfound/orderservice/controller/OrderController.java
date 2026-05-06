@@ -1,6 +1,7 @@
 package com.notfound.orderservice.controller;
 
 import com.notfound.orderservice.model.dto.request.CheckoutRequest;
+import com.notfound.orderservice.model.dto.response.AdminStatsResponse;
 import com.notfound.orderservice.model.dto.response.ApiResponse;
 import com.notfound.orderservice.model.dto.response.CheckPurchasedResponse;
 import com.notfound.orderservice.model.dto.response.OrderResponse;
@@ -160,6 +161,11 @@ public class OrderController {
         }
         
         return ResponseEntity.ok(orderService.getGlobalStats(startDate, endDate));
+    }
+
+    @GetMapping("/admin/stats")
+    public ResponseEntity<AdminStatsResponse> getAdminStats() {
+        return ResponseEntity.ok(orderService.getAdminAiStats());
     }
 
     @GetMapping("/top-spenders")
