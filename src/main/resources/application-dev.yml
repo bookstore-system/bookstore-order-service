@@ -32,6 +32,12 @@ spring:
 book-service:
   url: ${BOOK_SERVICE_URL:http://localhost:8082}
 
+user-service:
+  url: ${USER_SERVICE_URL:http://localhost:8081}
+
+promotion-service:
+  url: ${PROMOTION_SERVICE_URL:http://localhost:8086}
+
 logging:
   level:
     org.springframework.web: DEBUG
