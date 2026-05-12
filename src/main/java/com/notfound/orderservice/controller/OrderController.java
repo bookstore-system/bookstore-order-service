@@ -1,16 +1,19 @@
 package com.notfound.orderservice.controller;
 
+import com.notfound.orderservice.client.PaymentClient;
+import com.notfound.orderservice.exception.BusinessException;
 import com.notfound.orderservice.model.dto.request.CheckoutRequest;
+import com.notfound.orderservice.model.dto.request.PaymentRequest;
 import com.notfound.orderservice.model.dto.response.AdminStatsResponse;
 import com.notfound.orderservice.model.dto.response.ApiResponse;
 import com.notfound.orderservice.model.dto.response.CheckPurchasedResponse;
+import com.notfound.orderservice.model.dto.response.CreatePaymentResponse;
 import com.notfound.orderservice.model.dto.response.OrderResponse;
 import com.notfound.orderservice.model.dto.response.StatsResponse;
 import com.notfound.orderservice.model.dto.response.UserOrderSummaryResponse;
 import com.notfound.orderservice.model.dto.response.UserSpenderResponse;
 import com.notfound.orderservice.model.enums.OrderStatus;
 import com.notfound.orderservice.service.OrderService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -20,6 +23,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -31,11 +35,12 @@ import java.util.UUID;
 public class OrderController {
 
     private final OrderService orderService;
+    private final PaymentClient paymentClient;
 
     @PostMapping("/checkout")
     public ResponseEntity<ApiResponse<OrderResponse>> checkout(
             @RequestHeader(value = "X-User-Id", required = false) String userId, 
-            @Valid @RequestBody CheckoutRequest request) {
+            @RequestBody(required = false) CheckoutRequest request) {
         
         if (userId == null) {
             return ResponseEntity.status(401).body(ApiResponse.<OrderResponse>builder()
@@ -44,6 +49,15 @@ public class OrderController {
                     .build());
         }
         
+        if (request == null) {
+            request = CheckoutRequest.builder()
+                .paymentMethod("COD")
+                .build();
+        }
+        if (request.getPaymentMethod() == null || request.getPaymentMethod().isBlank()) {
+            request.setPaymentMethod("COD");
+        }
+
         OrderResponse orderResponse = orderService.createOrder(userId, request);
         return ResponseEntity.ok(ApiResponse.<OrderResponse>builder()
                 .code(1000)
@@ -51,6 +65,117 @@ public class OrderController {
                 .result(orderResponse)
                 .build());
     }
+
+        @PostMapping("/checkout/vnpay")
+        public ResponseEntity<ApiResponse<CreatePaymentResponse>> checkoutWithVNPay(
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
+            @RequestBody CheckoutRequest request) {
+
+        if (userId == null) {
+            return ResponseEntity.status(401).body(ApiResponse.<CreatePaymentResponse>builder()
+                .code(4001)
+                .message("Unauthenticated")
+                .build());
+        }
+
+        if (request == null) {
+            throw new BusinessException("Dữ liệu tạo đơn không hợp lệ");
+        }
+
+        request.setPaymentMethod("VNPay");
+        OrderResponse orderResponse = orderService.createOrder(userId, request);
+
+        PaymentRequest paymentRequest = PaymentRequest.builder()
+            .orderId(orderResponse.getId())
+            .amount(orderResponse.getTotal() != null ? orderResponse.getTotal().longValue() : 0L)
+            .build();
+
+        ApiResponse<CreatePaymentResponse> paymentResponse = paymentClient.createVNPayPayment(paymentRequest);
+        CreatePaymentResponse payment = paymentResponse != null ? paymentResponse.getResult() : null;
+        if (payment == null) {
+            throw new BusinessException("Không thể tạo thanh toán VNPay");
+        }
+
+        return ResponseEntity.ok(ApiResponse.<CreatePaymentResponse>builder()
+            .code(1000)
+            .message("Đã tạo đơn hàng và đường dẫn thanh toán VNPay thành công")
+            .result(payment)
+            .build());
+        }
+
+        @PostMapping("/checkout/zalopay")
+        public ResponseEntity<ApiResponse<CreatePaymentResponse>> checkoutWithZaloPay(
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
+            @RequestBody CheckoutRequest request) {
+
+        if (userId == null) {
+            return ResponseEntity.status(401).body(ApiResponse.<CreatePaymentResponse>builder()
+                .code(4001)
+                .message("Unauthenticated")
+                .build());
+        }
+
+        if (request == null) {
+            throw new BusinessException("Dữ liệu tạo đơn không hợp lệ");
+        }
+
+        request.setPaymentMethod("ZaloPay");
+        OrderResponse orderResponse = orderService.createOrder(userId, request);
+
+        PaymentRequest paymentRequest = PaymentRequest.builder()
+            .orderId(orderResponse.getId())
+            .amount(orderResponse.getTotal() != null ? orderResponse.getTotal().longValue() : 0L)
+            .build();
+
+        ApiResponse<CreatePaymentResponse> paymentResponse = paymentClient.createZaloPayPayment(paymentRequest);
+        CreatePaymentResponse payment = paymentResponse != null ? paymentResponse.getResult() : null;
+        if (payment == null) {
+            throw new BusinessException("Không thể tạo thanh toán ZaloPay");
+        }
+
+        return ResponseEntity.ok(ApiResponse.<CreatePaymentResponse>builder()
+            .code(1000)
+            .message("Đã tạo đơn hàng và đường dẫn thanh toán ZaloPay thành công")
+            .result(payment)
+            .build());
+        }
+
+        @PostMapping("/checkout/momo")
+        public ResponseEntity<ApiResponse<CreatePaymentResponse>> checkoutWithMoMo(
+            @RequestHeader(value = "X-User-Id", required = false) String userId,
+            @RequestBody CheckoutRequest request) {
+
+        if (userId == null) {
+            return ResponseEntity.status(401).body(ApiResponse.<CreatePaymentResponse>builder()
+                .code(4001)
+                .message("Unauthenticated")
+                .build());
+        }
+
+        if (request == null) {
+            throw new BusinessException("Dữ liệu tạo đơn không hợp lệ");
+        }
+
+        request.setPaymentMethod("MoMo");
+        OrderResponse orderResponse = orderService.createOrder(userId, request);
+
+        PaymentRequest paymentRequest = PaymentRequest.builder()
+            .orderId(orderResponse.getId())
+            .amount(orderResponse.getTotal() != null ? orderResponse.getTotal().longValue() : 0L)
+            .build();
+
+        ApiResponse<CreatePaymentResponse> paymentResponse = paymentClient.createMoMoPayment(paymentRequest);
+        CreatePaymentResponse payment = paymentResponse != null ? paymentResponse.getResult() : null;
+        if (payment == null) {
+            throw new BusinessException("Không thể tạo thanh toán MoMo");
+        }
+
+        return ResponseEntity.ok(ApiResponse.<CreatePaymentResponse>builder()
+            .code(1000)
+            .message("Đã tạo đơn hàng và đường dẫn thanh toán MoMo thành công")
+            .result(payment)
+            .build());
+        }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<OrderResponse>>> getMyOrders(
@@ -120,6 +245,28 @@ public class OrderController {
                 .build());
     }
 
+    @PutMapping("/admin/{orderId}/status")
+    public ResponseEntity<ApiResponse<OrderResponse>> updateOrderStatus(
+            @PathVariable UUID orderId,
+            @RequestParam String status) {
+
+        try {
+            OrderStatus orderStatus = OrderStatus.valueOf(status.toUpperCase());
+            OrderResponse order = orderService.updateOrderStatus(orderId, orderStatus);
+
+            return ResponseEntity.ok(ApiResponse.<OrderResponse>builder()
+                    .code(1000)
+                    .message("Cập nhật trạng thái đơn hàng thành công")
+                    .result(order)
+                    .build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.ok(ApiResponse.<OrderResponse>builder()
+                    .code(4003)
+                    .message("Trạng thái không hợp lệ. Các trạng thái: PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED, COMPLETED")
+                    .build());
+        }
+    }
+
     // Admin state transition endpoints
     @PostMapping("/admin/{orderId}/confirm")
     public ResponseEntity<ApiResponse<OrderResponse>> confirmOrder(@PathVariable UUID orderId) {
@@ -168,6 +315,70 @@ public class OrderController {
         return ResponseEntity.ok(orderService.getAdminAiStats());
     }
 
+    @GetMapping("/admin/status/{status}")
+    public ResponseEntity<ApiResponse<List<OrderResponse>>> getOrdersByStatus(
+            @PathVariable String status,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        try {
+            OrderStatus orderStatus = OrderStatus.valueOf(status.toUpperCase());
+            List<OrderResponse> orders;
+
+            if (startDate != null && endDate != null) {
+                LocalDateTime start = LocalDate.parse(startDate).atStartOfDay();
+                LocalDateTime end = LocalDate.parse(endDate).atTime(23, 59, 59);
+                orders = orderService.getOrdersByStatus(orderStatus, start, end);
+            } else {
+                orders = orderService.getOrdersByStatus(orderStatus);
+            }
+
+            return ResponseEntity.ok(ApiResponse.<List<OrderResponse>>builder()
+                    .code(1000)
+                    .message("Lấy danh sách đơn hàng theo trạng thái thành công")
+                    .result(orders)
+                    .build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.ok(ApiResponse.<List<OrderResponse>>builder()
+                    .code(4003)
+                    .message("Trạng thái không hợp lệ")
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.ok(ApiResponse.<List<OrderResponse>>builder()
+                    .code(4004)
+                    .message("Lỗi định dạng ngày tháng: " + e.getMessage())
+                    .build());
+        }
+    }
+
+    @GetMapping("/admin/revenue")
+    public ResponseEntity<ApiResponse<Double>> getTotalRevenue(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        try {
+            Double revenue;
+
+            if (startDate != null && endDate != null) {
+                LocalDateTime start = LocalDate.parse(startDate).atStartOfDay();
+                LocalDateTime end = LocalDate.parse(endDate).atTime(23, 59, 59);
+                revenue = orderService.getTotalRevenue(start, end);
+            } else {
+                revenue = orderService.getTotalRevenue();
+            }
+
+            return ResponseEntity.ok(ApiResponse.<Double>builder()
+                    .code(1000)
+                    .message("Lấy tổng doanh thu thành công")
+                    .result(revenue)
+                    .build());
+        } catch (Exception e) {
+            return ResponseEntity.ok(ApiResponse.<Double>builder()
+                    .code(4004)
+                    .message("Lỗi định dạng ngày tháng: " + e.getMessage())
+                    .result(0.0)
+                    .build());
+        }
+    }
+
     @GetMapping("/top-spenders")
     public ResponseEntity<List<UserSpenderResponse>> getTopSpenders(
             @RequestParam(defaultValue = "5") int limit) {
@@ -200,6 +411,25 @@ public class OrderController {
         return ResponseEntity.ok(CheckPurchasedResponse.builder()
                 .isPurchased(isPurchased)
                 .message(message)
+                .build());
+    }
+
+    @GetMapping("/count")
+    public ResponseEntity<ApiResponse<Long>> countMyOrders(
+            @RequestHeader(value = "X-User-Id", required = false) String userId) {
+        if (userId == null) {
+            return ResponseEntity.ok(ApiResponse.<Long>builder()
+                    .code(1000)
+                    .result(0L)
+                    .build());
+        }
+
+        Long count = orderService.countOrdersByUserId(userId);
+
+        return ResponseEntity.ok(ApiResponse.<Long>builder()
+                .code(1000)
+                .message("Đếm số đơn hàng thành công")
+                .result(count)
                 .build());
     }
 }
