@@ -1,5 +1,6 @@
 package com.notfound.orderservice.model.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,5 +15,7 @@ import lombok.NoArgsConstructor;
 public class ApiResponse<T> {
     private int code;
     private String message;
+    
+    @JsonAlias({"result", "data"})
     private T result;
 }

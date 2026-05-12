@@ -19,7 +19,7 @@
 - **`Order`**: Lưu thông tin cốt lõi của một đơn đặt hàng bao gồm `userId` (chuỗi string, không khóa ngoại), tổng giá, trạng thái đơn, và `ShippingDetails` (embedded).
 - **`OrderItem`**: Mô tả chi tiết sách (Book ID dưới dạng String để mapping lỏng lẻo với `book-service`), số lượng, đơn giá và tổng phụ.
 - **`ShippingDetails`**: Một `@Embeddable` class chứa thông tin người nhận, số điện thoại, địa chỉ cụ thể.
-- **`OrderStatus` (Enum)**: `PENDING`, `CONFIRMED`, `PROCESSING`, `SHIPPED`, `DELIVERED`, `CANCELLED`.
+- **`OrderStatus` (Enum)**: `PENDING`, `CONFIRMED`, `PROCESSING`, `SHIPPED`, `DELIVERED`, `COMPLETED`, `CANCELLED`, `RETURNED`.
 
 ### Các DTO (Data Transfer Object)
 - **`CheckoutRequest`**: Payload dùng để người dùng tạo đơn. Chứa `addressId`, `paymentMethod`, `bookIds` (danh sách ID cuốn sách muốn mua), `discountCode`, v.v.
@@ -33,46 +33,74 @@ Tất cả các API dành cho khách hàng đều yêu cầu Header **`X-User-Id
 
 ### Dành cho Người dùng (Client)
 1. **[POST] `/api/v1/orders/checkout`**
-   - Chức năng: Lưu đơn hàng mới.
+   - Chức năng: Lưu đơn hàng mới (COD).
    - Header bắt buộc: `X-User-Id`
    - Body: `CheckoutRequest`
 
-2. **[GET] `/api/v1/orders`**
+2. **[POST] `/api/v1/orders/checkout/vnpay`**
+   - Chức năng: Tạo đơn hàng và yêu cầu thanh toán VNPay.
+   - Header bắt buộc: `X-User-Id`
+   - Body: `CheckoutRequest`
+
+3. **[POST] `/api/v1/orders/checkout/zalopay`**
+   - Chức năng: Tạo đơn hàng và yêu cầu thanh toán ZaloPay.
+   - Header bắt buộc: `X-User-Id`
+   - Body: `CheckoutRequest`
+
+4. **[POST] `/api/v1/orders/checkout/momo`**
+   - Chức năng: Tạo đơn hàng và yêu cầu thanh toán MoMo.
+   - Header bắt buộc: `X-User-Id`
+   - Body: `CheckoutRequest`
+
+5. **[GET] `/api/v1/orders`**
    - Chức năng: Lấy danh sách các đơn hàng của user đang đăng nhập.
    - Header bắt buộc: `X-User-Id`
 
-3. **[GET] `/api/v1/orders/{orderId}`**
+6. **[GET] `/api/v1/orders/{orderId}`**
    - Chức năng: Lấy chi tiết một đơn đặt hàng qua UUID.
    - Header bắt buộc: `X-User-Id`
 
-4. **[POST] `/api/v1/orders/{orderId}/cancel`**
+7. **[POST] `/api/v1/orders/{orderId}/cancel`**
    - Chức năng: Hủy đơn hàng (Chỉ khách hàng sở hữu mới được hủy).
+   - Header bắt buộc: `X-User-Id`
+
+8. **[GET] `/api/v1/orders/count`**
+   - Chức năng: Đếm số lượng đơn hàng của user đang đăng nhập.
    - Header bắt buộc: `X-User-Id`
 
 ### Dành cho Quản trị viên (Admin)
 5. **[GET] `/api/v1/orders/admin/all`**
    - Chức năng: Lọc danh sách (Phân trang giới hạn size 100/lần). Dùng Param `?page=0&size=20`.
 
-6. Các API chuyển đổi trạng thái (Method `POST`):
+6. **[PUT] `/api/v1/orders/admin/{orderId}/status`**
+   - Chức năng: Cập nhật trạng thái đơn hàng qua query param `?status=CONFIRMED`.
+
+7. Các API chuyển đổi trạng thái (Method `POST`):
    - `/admin/{orderId}/confirm` -> Cập nhật thành `CONFIRMED`
    - `/admin/{orderId}/process` -> Cập nhật thành `PROCESSING`
    - `/admin/{orderId}/ship` -> Cập nhật thành `SHIPPED`
    - `/admin/{orderId}/deliver` -> Cập nhật thành `DELIVERED`
 
+8. **[GET] `/api/v1/orders/admin/status/{status}`**
+   - Chức năng: Lọc đơn hàng theo trạng thái. Hỗ trợ `startDate` và `endDate` (yyyy-MM-dd).
+
+9. **[GET] `/api/v1/orders/admin/revenue`**
+   - Chức năng: Lấy tổng doanh thu. Hỗ trợ `startDate` và `endDate` (yyyy-MM-dd).
+
 ### API Thống kê & Hỗ trợ Service khác
-7. **[GET] `/api/v1/orders/stats`**
+10. **[GET] `/api/v1/orders/stats`**
    - Chức năng: Thống kê tổng quan (doanh thu, tổng đơn hàng, v.v.). Hỗ trợ filter theo `startDate` và `endDate`.
 
-8. **[GET] `/api/v1/orders/admin/stats`**
+11. **[GET] `/api/v1/orders/admin/stats`**
    - Chức năng: API cung cấp số liệu mở rộng (Pending, Completed, Cancelled orders) để phục vụ việc generate báo cáo từ AI Service.
 
-9. **[GET] `/api/v1/orders/top-spenders` & `/api/v1/orders/top-buyers`**
+12. **[GET] `/api/v1/orders/top-spenders` & `/api/v1/orders/top-buyers`**
    - Chức năng: Truy xuất danh sách những khách hàng chi tiêu nhiều nhất hoặc order nhiều nhất.
 
-10. **[GET] `/api/v1/orders/users/{userId}/summary`**
+13. **[GET] `/api/v1/orders/users/{userId}/summary`**
     - Chức năng: Tóm lược thông tin mua hàng (số đơn, số tiền, ngày tạo cuối) của cá nhân một user.
 
-11. **[GET] `/api/v1/orders/check-purchased?userId=...&bookId=...`**
+14. **[GET] `/api/v1/orders/check-purchased?userId=...&bookId=...`**
     - Chức năng: Giao tiếp với **Review Service**. Trả về cờ `isPurchased: true` nếu user đã chọn mua và nhận sách thành công để Review Service kiểm tra quyền đánh giá (chống review rác).
 
 ---
@@ -82,13 +110,34 @@ Tất cả các API dành cho khách hàng đều yêu cầu Header **`X-User-Id
 `bookstore-order-service` **không hoạt động biệt lập hoàn toàn**. Nó phụ thuộc thiết yếu vào các service sau để có thể khởi tạo được một Order hoàn chỉnh.
 
 ### A. Phụ thuộc vào `bookstore-book-service`
-Tại API tạo đơn hàng (`checkout`), Service cần biết Sách đó tên gì, giá bao nhiêu để cộng tổng tiền.
+Tại API tạo đơn hàng (`checkout`), Service cần biết Sách đó tên gì, giá bao nhiêu, tồn kho để cộng tổng tiền.
 - **Phương thức giao tiếp**: Đồng bộ qua `Spring Cloud OpenFeign` (xem `BookClient.java`).
-- **Cấu hình môi trường**: URL của book-service được đọc từ biến môi trường `${BOOK_SERVICE_URL:http://localhost:8082}`.
+- **Cấu hình môi trường**: URL của book-service được đọc từ `${BOOK_SERVICE_URL:http://localhost:8082}`.
 - **API Cần từ Book Service**:
-  - `GET /api/books/{id}`: Đầu vào là một chuỗi ID sách, đầu ra phải là dữ liệu JSON chứa giá tiền (price) và thông tin giảm giá hoặc các chi tiết khác để tính toán.
+   - `POST /api/v1/books/batch-details`: Lấy giá, salePrice, title, stockQuantity cho danh sách bookIds.
+   - `POST /api/v1/books/reduce-stock`: Trừ tồn kho sau khi tạo đơn.
 
-### B. Phụ thuộc vào `bookstore-api-gateway`
+### B. Phụ thuộc vào `bookstore-user-service`
+- **Phương thức giao tiếp**: OpenFeign (xem `UserClient.java`).
+- **Cấu hình môi trường**: `${USER_SERVICE_URL:http://localhost:8081}`.
+- **API Cần từ User Service**:
+   - `GET /api/v1/users/{userId}/addresses/{addressId}`: Lấy thông tin giao hàng.
+
+### C. Phụ thuộc vào `bookstore-promotion-service`
+- **Phương thức giao tiếp**: OpenFeign (xem `PromotionClient.java`).
+- **Cấu hình môi trường**: `${PROMOTION_SERVICE_URL:http://localhost:8086}`.
+- **API Cần từ Promotion Service**:
+   - `POST /api/v1/promotions/apply`: Kiểm tra mã giảm giá và tính discount.
+
+### D. Phụ thuộc vào `bookstore-payment-service`
+- **Phương thức giao tiếp**: OpenFeign (xem `PaymentClient.java`).
+- **Cấu hình môi trường**: `${PAYMENT_SERVICE_URL:http://localhost:8085}`.
+- **API Cần từ Payment Service**:
+   - `POST /api/payment/vnpay/create`: Tạo URL thanh toán VNPay.
+   - `POST /api/payment/zalopay/create`: Tạo giao dịch ZaloPay.
+   - `POST /api/payment/momo/create`: Tạo URL thanh toán MoMo.
+
+### E. Phụ thuộc vào `bookstore-api-gateway`
 - Vì lý do bảo mật và theo chuẩn Microservice, `order-service` đã **xóa bỏ hoàn toàn lớp SecurityConfig**.
 - Nó ủy thác toàn bộ trách nhiệm xác thực/giải mã JWT cho API Gateway.
 - Vì thế API Gateway khi định tuyến yêu cầu xuống `order-service` **bắt buộc phải gắn kèm Header `X-User-Id`**. Nếu không, service không có cơ sở để định danh ai là người mua.

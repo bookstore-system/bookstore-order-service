@@ -1,7 +1,10 @@
 package com.notfound.orderservice.repository;
 
-import com.notfound.orderservice.model.entity.Order;
-import com.notfound.orderservice.model.enums.OrderStatus;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,18 +12,32 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import com.notfound.orderservice.model.entity.Order;
+import com.notfound.orderservice.model.enums.OrderStatus;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, UUID> {
     List<Order> findByCustomerIdOrderByOrderDateDesc(String customerId);
 
+       long countByCustomerId(String customerId);
+
     Page<Order> findAllByOrderByOrderDateDesc(Pageable pageable);
 
     List<Order> findByStatus(OrderStatus status);
+
+    @Query("SELECT o FROM Order o WHERE o.status = :status " +
+           "AND (:startDate IS NULL OR o.orderDate >= :startDate) " +
+           "AND (:endDate IS NULL OR o.orderDate <= :endDate) " +
+           "ORDER BY o.orderDate DESC")
+    List<Order> findByStatusAndDateRange(@Param("status") OrderStatus status,
+                                         @Param("startDate") LocalDateTime startDate,
+                                         @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.status != 'CANCELLED' " +
+           "AND (:startDate IS NULL OR o.orderDate >= :startDate) " +
+           "AND (:endDate IS NULL OR o.orderDate <= :endDate)")
+    Double getTotalRevenue(@Param("startDate") LocalDateTime startDate,
+                           @Param("endDate") LocalDateTime endDate);
 
     @Query("SELECT SUM(o.totalAmount) as totalRevenue, COUNT(o) as totalOrders, " +
            "(SUM(o.totalAmount) / COUNT(DISTINCT o.customerId)) as avgRevenuePerUser, " +
