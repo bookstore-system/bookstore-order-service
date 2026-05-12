@@ -38,6 +38,9 @@ user-service:
 promotion-service:
   url: ${PROMOTION_SERVICE_URL:http://localhost:8086}
 
+payment-service:
+  url: ${PAYMENT_SERVICE_URL:http://localhost:8085}
+
 logging:
   level:
     org.springframework.web: DEBUG

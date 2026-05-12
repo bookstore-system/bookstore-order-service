@@ -1,0 +1,2 @@
+payment-service:
+  url: ${PAYMENT_SERVICE_URL:http://payment-service:8085}
