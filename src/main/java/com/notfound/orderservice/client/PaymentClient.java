@@ -11,12 +11,12 @@ import com.notfound.orderservice.model.dto.response.CreatePaymentResponse;
 @FeignClient(name = "payment-service", url = "${payment-service.url:http://payment-service:8080}")
 public interface PaymentClient {
 
-    @PostMapping("/api/payment/vnpay/create")
+    @PostMapping("/api/v1/payment/vnpay/create")
     ApiResponse<CreatePaymentResponse> createVNPayPayment(@RequestBody PaymentRequest request);
 
-    @PostMapping("/api/payment/zalopay/create")
+    @PostMapping("/api/v1/payment/zalopay/create")
     ApiResponse<CreatePaymentResponse> createZaloPayPayment(@RequestBody PaymentRequest request);
 
-    @PostMapping("/api/payment/momo/create")
+    @PostMapping("/api/v1/payment/momo/create")
     ApiResponse<CreatePaymentResponse> createMoMoPayment(@RequestBody PaymentRequest request);
 }
