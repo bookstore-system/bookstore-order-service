@@ -27,6 +27,7 @@ import com.notfound.orderservice.client.dto.ReduceStockItem;
 import com.notfound.orderservice.client.dto.ReduceStockRequest;
 import com.notfound.orderservice.exception.BusinessException;
 import com.notfound.orderservice.exception.ResourceNotFoundException;
+import com.notfound.orderservice.messaging.OrderEventProducer;
 import com.notfound.orderservice.model.dto.request.CheckoutRequest;
 import com.notfound.orderservice.model.dto.response.AdminStatsResponse;
 import com.notfound.orderservice.model.dto.response.ApiResponse;
@@ -53,6 +54,7 @@ public class OrderServiceImpl implements OrderService {
     private final BookClient bookClient;
     private final UserClient userClient;
     private final PromotionClient promotionClient;
+    private final OrderEventProducer orderEventProducer;
 
     @Override
     @Transactional
@@ -377,6 +379,28 @@ public class OrderServiceImpl implements OrderService {
                 .build();
     }
     
+    @Override
+    @Transactional
+    public void updateOrderStatusByPayment(java.util.UUID orderId, OrderStatus newStatus) {
+        log.info("updateOrderStatusByPayment: orderId={}, newStatus={}", orderId, newStatus);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order", orderId.toString()));
+        order.setStatus(newStatus);
+        orderRepository.save(order);
+
+        if (newStatus == OrderStatus.CONFIRMED) {
+            orderEventProducer.publishOrderPlaced(
+                com.notfound.orderservice.messaging.OrderPlacedEvent.builder()
+                    .orderId(order.getOrderID())
+                    .userId(order.getCustomerId())
+                    .totalAmount(order.getTotalAmount())
+                    .paymentMethod(order.getPaymentMethod())
+                    .createdAt(order.getOrderDate())
+                    .build()
+            );
+        }
+    }
+
     private OrderResponse mapToResponse(Order order) {
         OrderResponse.OrderResponseBuilder builder = OrderResponse.builder()
                 .id(order.getOrderID())
