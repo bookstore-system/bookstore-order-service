@@ -19,4 +19,7 @@ public interface BookClient {
 
     @PostMapping("/api/v1/books/reduce-stock")
     ApiResponse<Void> reduceStock(@RequestBody ReduceStockRequest request);
+
+    @PostMapping("/api/v1/books/restore-stock")
+    ApiResponse<Void> restoreStock(@RequestBody ReduceStockRequest request);
 }

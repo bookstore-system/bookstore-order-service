@@ -49,4 +49,6 @@ public interface OrderService {
     AdminStatsResponse getAdminAiStats();
 
     boolean hasUserPurchasedAndReceivedBook(String userId, String bookId);
+
+    void updateOrderStatusByPayment(java.util.UUID orderId, OrderStatus newStatus);
 }
