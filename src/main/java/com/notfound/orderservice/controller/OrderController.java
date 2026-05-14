@@ -270,29 +270,115 @@ public class OrderController {
     // Admin state transition endpoints
     @PostMapping("/admin/{orderId}/confirm")
     public ResponseEntity<ApiResponse<OrderResponse>> confirmOrder(@PathVariable UUID orderId) {
-        return toggleOrderStatus(orderId, OrderStatus.CONFIRMED);
+        OrderResponse order = orderService.getOrderById(orderId);
+        if (!"COD".equalsIgnoreCase(order.getPaymentMethod())) {
+            return ResponseEntity.ok(ApiResponse.<OrderResponse>builder()
+                    .code(4003).message("Chỉ có thể xác nhận đơn hàng COD").build());
+        }
+        if (!"PENDING".equals(order.getStatus())) {
+            return ResponseEntity.ok(ApiResponse.<OrderResponse>builder()
+                    .code(4003).message("Chỉ có thể xác nhận đơn hàng đang ở trạng thái PENDING").build());
+        }
+        return toggleOrderStatus(orderId, OrderStatus.CONFIRMED, "Xác nhận đơn hàng COD thành công");
     }
-    
+
     @PostMapping("/admin/{orderId}/process")
     public ResponseEntity<ApiResponse<OrderResponse>> processOrder(@PathVariable UUID orderId) {
-        return toggleOrderStatus(orderId, OrderStatus.PROCESSING);
+        OrderResponse order = orderService.getOrderById(orderId);
+        if (!"CONFIRMED".equals(order.getStatus()) && !"PENDING".equals(order.getStatus())) {
+            return ResponseEntity.ok(ApiResponse.<OrderResponse>builder()
+                    .code(4003).message("Chỉ có thể xử lý đơn hàng đang ở trạng thái CONFIRMED hoặc PENDING").build());
+        }
+        return toggleOrderStatus(orderId, OrderStatus.PROCESSING, "Bắt đầu xử lý đơn hàng thành công");
     }
 
     @PostMapping("/admin/{orderId}/ship")
     public ResponseEntity<ApiResponse<OrderResponse>> shipOrder(@PathVariable UUID orderId) {
-        return toggleOrderStatus(orderId, OrderStatus.SHIPPED);
+        OrderResponse order = orderService.getOrderById(orderId);
+        if (!"PROCESSING".equals(order.getStatus())) {
+            return ResponseEntity.ok(ApiResponse.<OrderResponse>builder()
+                    .code(4003).message("Chỉ có thể giao hàng khi đơn đang ở trạng thái PROCESSING").build());
+        }
+        return toggleOrderStatus(orderId, OrderStatus.SHIPPED, "Đơn hàng đã được giao cho shipper");
     }
 
     @PostMapping("/admin/{orderId}/deliver")
     public ResponseEntity<ApiResponse<OrderResponse>> deliverOrder(@PathVariable UUID orderId) {
-        return toggleOrderStatus(orderId, OrderStatus.DELIVERED);
+        OrderResponse order = orderService.getOrderById(orderId);
+        if (!"SHIPPED".equals(order.getStatus())) {
+            return ResponseEntity.ok(ApiResponse.<OrderResponse>builder()
+                    .code(4003).message("Chỉ có thể xác nhận giao hàng khi đơn đang ở trạng thái SHIPPED").build());
+        }
+        return toggleOrderStatus(orderId, OrderStatus.DELIVERED, "Đơn hàng đã được giao thành công");
     }
 
-    private ResponseEntity<ApiResponse<OrderResponse>> toggleOrderStatus(UUID orderId, OrderStatus status) {
+    @PostMapping("/admin/{orderId}/complete")
+    public ResponseEntity<ApiResponse<OrderResponse>> completeOrder(@PathVariable UUID orderId) {
+        OrderResponse order = orderService.getOrderById(orderId);
+        if (!"DELIVERED".equals(order.getStatus())) {
+            return ResponseEntity.ok(ApiResponse.<OrderResponse>builder()
+                    .code(4003).message("Chỉ có thể hoàn thành đơn hàng đã được giao").build());
+        }
+        return toggleOrderStatus(orderId, OrderStatus.COMPLETED, "Đơn hàng đã hoàn thành");
+    }
+
+    @PostMapping("/admin/{orderId}/cancel")
+    public ResponseEntity<ApiResponse<OrderResponse>> adminCancelOrder(@PathVariable UUID orderId) {
+        OrderResponse order = orderService.getOrderById(orderId);
+        if ("DELIVERED".equals(order.getStatus()) || "COMPLETED".equals(order.getStatus())) {
+            return ResponseEntity.ok(ApiResponse.<OrderResponse>builder()
+                    .code(4003).message("Không thể hủy đơn hàng đã giao hoặc đã hoàn thành").build());
+        }
+        return toggleOrderStatus(orderId, OrderStatus.CANCELLED, "Đã hủy đơn hàng");
+    }
+
+    @GetMapping("/admin/{orderId}/details")
+    public ResponseEntity<ApiResponse<OrderResponse>> getOrderDetailsAdmin(@PathVariable UUID orderId) {
+        return ResponseEntity.ok(ApiResponse.<OrderResponse>builder()
+                .code(1000)
+                .message("Lấy chi tiết đơn hàng thành công")
+                .result(orderService.getOrderById(orderId))
+                .build());
+    }
+
+    @GetMapping("/admin/cod/pending")
+    public ResponseEntity<ApiResponse<List<OrderResponse>>> getPendingCODOrders() {
+        List<OrderResponse> codOrders = orderService.getOrdersByStatus(OrderStatus.PENDING).stream()
+                .filter(order -> "COD".equalsIgnoreCase(order.getPaymentMethod()))
+                .toList();
+        return ResponseEntity.ok(ApiResponse.<List<OrderResponse>>builder()
+                .code(1000)
+                .message("Lấy danh sách đơn COD chưa xác nhận thành công")
+                .result(codOrders)
+                .build());
+    }
+
+    @GetMapping("/admin/search")
+    public ResponseEntity<ApiResponse<List<OrderResponse>>> searchOrders(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, Math.min(size, 100));
+        List<OrderResponse> filtered = orderService.getAllOrders(pageable).getContent().stream()
+                .filter(order ->
+                    order.getId().toString().contains(keyword) ||
+                    (order.getRecipientName() != null &&
+                     order.getRecipientName().toLowerCase().contains(keyword.toLowerCase())) ||
+                    (order.getCustomerName() != null &&
+                     order.getCustomerName().toLowerCase().contains(keyword.toLowerCase())))
+                .toList();
+        return ResponseEntity.ok(ApiResponse.<List<OrderResponse>>builder()
+                .code(1000)
+                .message("Tìm kiếm đơn hàng thành công")
+                .result(filtered)
+                .build());
+    }
+
+    private ResponseEntity<ApiResponse<OrderResponse>> toggleOrderStatus(UUID orderId, OrderStatus status, String message) {
         OrderResponse updatedOrder = orderService.updateOrderStatus(orderId, status);
         return ResponseEntity.ok(ApiResponse.<OrderResponse>builder()
                 .code(1000)
-                .message("Cập nhật trạng thái thành công")
+                .message(message)
                 .result(updatedOrder)
                 .build());
     }

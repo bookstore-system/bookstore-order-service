@@ -31,6 +31,7 @@ import com.notfound.orderservice.messaging.OrderEventProducer;
 import com.notfound.orderservice.model.dto.request.CheckoutRequest;
 import com.notfound.orderservice.model.dto.response.AdminStatsResponse;
 import com.notfound.orderservice.model.dto.response.ApiResponse;
+import com.notfound.orderservice.model.dto.response.OrderItemResponse;
 import com.notfound.orderservice.model.dto.response.OrderResponse;
 import com.notfound.orderservice.model.dto.response.StatsResponse;
 import com.notfound.orderservice.model.dto.response.UserOrderSummaryResponse;
@@ -39,6 +40,7 @@ import com.notfound.orderservice.model.entity.Order;
 import com.notfound.orderservice.model.entity.OrderItem;
 import com.notfound.orderservice.model.entity.ShippingDetails;
 import com.notfound.orderservice.model.enums.OrderStatus;
+import com.notfound.orderservice.repository.OrderItemRepository;
 import com.notfound.orderservice.repository.OrderRepository;
 import com.notfound.orderservice.service.OrderService;
 
@@ -50,7 +52,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class OrderServiceImpl implements OrderService {
 
+    private static final double TAX_RATE = 0.05;
+
     private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
     private final BookClient bookClient;
     private final UserClient userClient;
     private final PromotionClient promotionClient;
@@ -180,7 +185,10 @@ public class OrderServiceImpl implements OrderService {
                 finalTotal = BigDecimal.ZERO;
             }
 
+            double taxAmount = finalTotal.doubleValue() * TAX_RATE;
+
             order.setDiscountAmount(discountAmount.doubleValue());
+            order.setTaxAmount(taxAmount);
             order.setTotalAmount(finalTotal.doubleValue());
             order.setOrderItems(orderItems);
 
@@ -231,11 +239,28 @@ public class OrderServiceImpl implements OrderService {
         if (!order.getCustomerId().equals(userId)) {
             throw new BusinessException("Unauthorized to cancel this order");
         }
-        
-        if (order.getStatus() != OrderStatus.PENDING) {
-            throw new BusinessException("Only PENDING orders can be cancelled");
+
+        if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.CONFIRMED) {
+            throw new BusinessException("Không thể hủy đơn hàng ở trạng thái hiện tại");
         }
-        
+
+        List<OrderItem> orderItems = orderItemRepository.findByOrder_OrderID(orderId);
+        if (!orderItems.isEmpty()) {
+            ReduceStockRequest restoreRequest = ReduceStockRequest.builder()
+                    .items(orderItems.stream()
+                            .map(item -> ReduceStockItem.builder()
+                                    .bookId(item.getBookId())
+                                    .quantity(item.getQuantity())
+                                    .build())
+                            .collect(Collectors.toList()))
+                    .build();
+            try {
+                bookClient.restoreStock(restoreRequest);
+            } catch (Exception e) {
+                log.warn("Failed to restore stock for cancelled order {}: {}", orderId, e.getMessage());
+            }
+        }
+
         order.setStatus(OrderStatus.CANCELLED);
         log.info("Order {} successfully cancelled", orderId);
         return mapToResponse(orderRepository.save(order));
@@ -402,17 +427,30 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private OrderResponse mapToResponse(Order order) {
+        List<OrderItemResponse> itemResponses = orderItemRepository
+                .findByOrder_OrderID(order.getOrderID())
+                .stream()
+                .map(item -> OrderItemResponse.builder()
+                        .id(item.getOrderItemID())
+                        .bookId(item.getBookId())
+                        .quantity(item.getQuantity())
+                        .unitPrice(item.getUnitPrice())
+                        .subtotal(item.getSubtotal())
+                        .build())
+                .collect(Collectors.toList());
+
         OrderResponse.OrderResponseBuilder builder = OrderResponse.builder()
                 .id(order.getOrderID())
                 .orderDate(order.getOrderDate())
                 .status(order.getStatus().name())
                 .total(order.getTotalAmount())
                 .paymentMethod(order.getPaymentMethod())
-            .taxAmount(order.getTaxAmount())
-            .shippingFee(order.getShippingFee())
-            .promotionId(order.getPromotionId())
-            .discountAmount(order.getDiscountAmount())
-            .customerId(order.getCustomerId());
+                .taxAmount(order.getTaxAmount())
+                .shippingFee(order.getShippingFee())
+                .promotionId(order.getPromotionId())
+                .discountAmount(order.getDiscountAmount())
+                .customerId(order.getCustomerId())
+                .items(itemResponses);
 
         ShippingDetails shippingDetails = order.getShippingDetails();
         if (shippingDetails != null) {
