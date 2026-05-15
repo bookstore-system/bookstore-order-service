@@ -172,3 +172,48 @@ Hệ thống đã tích hợp sẵn công cụ tự động sinh tài liệu Swa
    - Chạy tại Port nội bộ IDE: `8084`
    - Cấu hình Timeout cho OpenFeign gọi sang service khác: `Connect(5s), Read(10s)`.
    - Kết nối DB an toàn Pool `HikariCP`: Max pool: 10, Min idle: 5.
+
+---
+
+## 6. Unit Tests
+
+Service có bộ unit tests hoàn chỉnh. **Không cần** chạy DB, RabbitMQ hay service khác — toàn bộ dependency được mock bằng Mockito.
+
+### Các file test
+
+| File | Số test | Phạm vi |
+|---|---|---|
+| `service/impl/OrderServiceImplTest.java` | 32 | Business logic: createOrder (14 cases), cancelOrder (6), updateStatus, stats, messaging |
+| `controller/OrderControllerTest.java` | 22 | REST layer: auth guard 401, response codes, error handling |
+| `messaging/PaymentEventConsumerTest.java` | 4 | RabbitMQ consumer: COMPLETED→CONFIRMED, FAILED→CANCELLED, unknown, exception swallow |
+| `messaging/OrderEventProducerTest.java` | 2 | RabbitMQ producer: routing key đúng exchange/queue |
+| **Tổng** | **60** | |
+
+### Chạy test
+
+```powershell
+cd bookstore-order-service
+
+# Chạy toàn bộ unit tests (bỏ qua contextLoads vì cần DB thật)
+mvn test -Dtest="OrderServiceImplTest,OrderControllerTest,PaymentEventConsumerTest,OrderEventProducerTest"
+
+# Chạy từng file riêng
+mvn test -Dtest=OrderServiceImplTest
+mvn test -Dtest=OrderControllerTest
+
+# Chạy 1 method cụ thể
+mvn test -Dtest="OrderServiceImplTest#createOrder_happyPath_noDiscount_returnsOrderResponse"
+```
+
+### Lưu ý kỹ thuật — SB4 Breaking Changes trong Test
+
+- **`@WebMvcTest` và `@MockBean` bị xóa** trong Spring Boot 4 (package `org.springframework.boot.test.autoconfigure.web.servlet` và `org.springframework.boot.test.mock.mockito` không còn tồn tại).
+- Controller test dùng `MockMvcBuilders.standaloneSetup()` thay thế:
+  ```java
+  mockMvc = MockMvcBuilders.standaloneSetup(new OrderController(orderService, paymentClient))
+          .setControllerAdvice(new GlobalExceptionHandler())
+          .build();
+  ```
+- `@Mock` từ Mockito thay `@MockBean` — không cần Spring context.
+- Jackson serialize `boolean isPurchased` getter `isPurchased()` → JSON key là `"purchased"` (strip prefix `is`). Test phải check `$.purchased` không phải `$.isPurchased`.
+- `.hasMessageContaining()` của AssertJ là **case-sensitive** — tránh so sánh tiếng Việt có dấu.
