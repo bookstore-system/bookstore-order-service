@@ -262,8 +262,24 @@ public class OrderServiceImpl implements OrderService {
         }
 
         order.setStatus(OrderStatus.CANCELLED);
+        Order cancelledOrder = orderRepository.save(order);
         log.info("Order {} successfully cancelled", orderId);
-        return mapToResponse(orderRepository.save(order));
+
+        try {
+            orderEventProducer.publishOrderCancelled(
+                com.notfound.orderservice.messaging.OrderPlacedEvent.builder()
+                    .orderId(cancelledOrder.getOrderID())
+                    .userId(cancelledOrder.getCustomerId())
+                    .totalAmount(cancelledOrder.getTotalAmount())
+                    .paymentMethod(cancelledOrder.getPaymentMethod())
+                    .createdAt(cancelledOrder.getOrderDate())
+                    .build()
+            );
+        } catch (Exception e) {
+            log.warn("Publish order.cancelled fail orderId={}: {}", orderId, e.getMessage());
+        }
+
+        return mapToResponse(cancelledOrder);
     }
 
     @Override
@@ -278,8 +294,27 @@ public class OrderServiceImpl implements OrderService {
         log.info("Updating orderId {} status to {}", orderId, status);
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order", orderId.toString()));
+        OrderStatus previous = order.getStatus();
         order.setStatus(status);
-        return mapToResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+
+        if (status == OrderStatus.CANCELLED && previous != OrderStatus.CANCELLED) {
+            try {
+                orderEventProducer.publishOrderCancelled(
+                    com.notfound.orderservice.messaging.OrderPlacedEvent.builder()
+                        .orderId(saved.getOrderID())
+                        .userId(saved.getCustomerId())
+                        .totalAmount(saved.getTotalAmount())
+                        .paymentMethod(saved.getPaymentMethod())
+                        .createdAt(saved.getOrderDate())
+                        .build()
+                );
+            } catch (Exception e) {
+                log.warn("Publish order.cancelled fail orderId={}: {}", orderId, e.getMessage());
+            }
+        }
+
+        return mapToResponse(saved);
     }
 
     @Override

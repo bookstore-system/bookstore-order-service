@@ -21,6 +21,21 @@
 - **`ShippingDetails`**: Một `@Embeddable` class chứa thông tin người nhận, số điện thoại, địa chỉ cụ thể.
 - **`OrderStatus` (Enum)**: `PENDING`, `CONFIRMED`, `PROCESSING`, `SHIPPED`, `DELIVERED`, `COMPLETED`, `CANCELLED`, `RETURNED`.
 
+### Luồng trạng thái Order
+
+```
+                  ┌─── payment.failed ────► CANCELLED
+                  │
+PENDING ──► CONFIRMED ──► PROCESSING ──► SHIPPED ──► DELIVERED ──► COMPLETED
+  │                                                                    │
+  ├─── user cancel ───► CANCELLED                                       │
+  └─── admin cancel ──► CANCELLED  ◄────── admin cancel ────────────────┘
+                            │
+                            └── publish order.cancelled event
+```
+
+`payment.completed` đẩy Order `PENDING → CONFIRMED` rồi publish `order.placed`. `payment.failed` đẩy `PENDING → CANCELLED` (không publish vì đã được Payment Service kích hoạt event chain).
+
 ### Các DTO (Data Transfer Object)
 - **`CheckoutRequest`**: Payload dùng để người dùng tạo đơn. Chứa `addressId`, `paymentMethod`, `bookIds` (danh sách ID cuốn sách muốn mua), `discountCode`, v.v.
 - **`OrderResponse` / `OrderItemResponse`**: DTO trả về thông tin sạch sẽ, không chứa các thuộc tính lộ cấu trúc Entity nội bộ.
@@ -130,12 +145,33 @@ Tại API tạo đơn hàng (`checkout`), Service cần biết Sách đó tên g
    - `POST /api/v1/promotions/apply`: Kiểm tra mã giảm giá và tính discount.
 
 ### D. Phụ thuộc vào `bookstore-payment-service`
-- **Phương thức giao tiếp**: OpenFeign (xem `PaymentClient.java`).
+- **Phương thức giao tiếp**: OpenFeign (sync) + RabbitMQ (async).
 - **Cấu hình môi trường**: `${PAYMENT_SERVICE_URL:http://localhost:8085}`.
-- **API Cần từ Payment Service**:
-   - `POST /api/payment/vnpay/create`: Tạo URL thanh toán VNPay.
-   - `POST /api/payment/zalopay/create`: Tạo giao dịch ZaloPay.
-   - `POST /api/payment/momo/create`: Tạo URL thanh toán MoMo.
+- **Sync — API Cần từ Payment Service**:
+   - `POST /api/v1/payment/vnpay/create`: Tạo URL thanh toán VNPay.
+   - `POST /api/v1/payment/zalopay/create`: Tạo giao dịch ZaloPay.
+   - `POST /api/v1/payment/momo/create`: Tạo URL thanh toán MoMo.
+- **Async — Consume events từ `payment.exchange`** (`PaymentEventConsumer`):
+   - `payment.completed` → set Order `CONFIRMED` + publish `order.placed`.
+   - `payment.failed` → set Order `CANCELLED`.
+
+### F. Outbound Events (RabbitMQ Producer)
+Exchange: `order.exchange` (topic). Routing keys:
+| Routing key | Trigger | Consumer |
+|---|---|---|
+| `order.placed` | Order chuyển `PENDING → CONFIRMED` (sau khi payment completed event nhận được) | Notification Service |
+| `order.cancelled` | `cancelOrder` (user) **hoặc** `updateOrderStatus` admin chuyển sang `CANCELLED` | Notification Service |
+
+Payload `OrderPlacedEvent`:
+```json
+{
+  "orderId": "uuid",
+  "userId": "string",
+  "totalAmount": 150000.0,
+  "paymentMethod": "VNPAY",
+  "createdAt": "2026-05-16T10:00:00"
+}
+```
 
 ### E. Phụ thuộc vào `bookstore-api-gateway`
 - Vì lý do bảo mật và theo chuẩn Microservice, `order-service` đã **xóa bỏ hoàn toàn lớp SecurityConfig**.
@@ -217,3 +253,13 @@ mvn test -Dtest="OrderServiceImplTest#createOrder_happyPath_noDiscount_returnsOr
 - `@Mock` từ Mockito thay `@MockBean` — không cần Spring context.
 - Jackson serialize `boolean isPurchased` getter `isPurchased()` → JSON key là `"purchased"` (strip prefix `is`). Test phải check `$.purchased` không phải `$.isPurchased`.
 - `.hasMessageContaining()` của AssertJ là **case-sensitive** — tránh so sánh tiếng Việt có dấu.
+
+---
+
+## 7. Changelog
+
+### 2026-05-16 — Phase 1 fixes
+- **M1** `cancelOrder` publish `order.cancelled` event (qua `OrderEventProducer.publishOrderCancelled`).
+- **M1** `updateOrderStatus` admin → CANCELLED cũng publish `order.cancelled` (chỉ khi previous status != CANCELLED).
+- README cập nhật endpoint payment-service prefix `/api/v1/payment/*` (trước ghi sai `/api/payment/*`).
+- README bổ sung section Outbound Events + sơ đồ trạng thái Order.
