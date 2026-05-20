@@ -1,11 +1,8 @@
 package com.notfound.orderservice.controller;
 
-import com.notfound.orderservice.client.PaymentClient;
-import com.notfound.orderservice.exception.BusinessException;
 import com.notfound.orderservice.exception.GlobalExceptionHandler;
+import com.notfound.orderservice.exception.BusinessException;
 import com.notfound.orderservice.exception.ResourceNotFoundException;
-import com.notfound.orderservice.model.dto.response.ApiResponse;
-import com.notfound.orderservice.model.dto.response.CreatePaymentResponse;
 import com.notfound.orderservice.model.dto.response.OrderResponse;
 import com.notfound.orderservice.model.enums.OrderStatus;
 import com.notfound.orderservice.service.OrderService;
@@ -22,7 +19,6 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -34,8 +30,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class OrderControllerTest {
 
     @Mock private OrderService orderService;
-    @Mock private PaymentClient paymentClient;
-
     private MockMvc mockMvc;
 
     private static final String USER_ID = "user-123";
@@ -45,7 +39,7 @@ class OrderControllerTest {
 
     @BeforeEach
     void setUp() {
-        OrderController controller = new OrderController(orderService, paymentClient);
+        OrderController controller = new OrderController(orderService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
@@ -59,82 +53,12 @@ class OrderControllerTest {
                 .build();
     }
 
-    // ==================== POST /api/v1/orders/checkout ====================
-
     @Test
-    void checkout_missingUserId_returns401() throws Exception {
+    void legacyCheckoutEndpoint_returns410() throws Exception {
         mockMvc.perform(post("/api/v1/orders/checkout")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(4001));
-    }
-
-    @Test
-    void checkout_validRequest_returns200WithOrderResponse() throws Exception {
-        when(orderService.createOrder(eq(USER_ID), any())).thenReturn(sampleOrderResponse);
-
-        mockMvc.perform(post("/api/v1/orders/checkout")
-                        .header("X-User-Id", USER_ID)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"paymentMethod\":\"COD\",\"addressId\":\"addr-001\",\"bookIds\":[\"book-001\"]}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(1000))
-                .andExpect(jsonPath("$.result.id").value(ORDER_ID.toString()));
-    }
-
-    @Test
-    void checkout_nullPaymentMethodInBody_defaultsToCODAndReturns200() throws Exception {
-        when(orderService.createOrder(eq(USER_ID), any())).thenReturn(sampleOrderResponse);
-
-        mockMvc.perform(post("/api/v1/orders/checkout")
-                        .header("X-User-Id", USER_ID)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"addressId\":\"addr-001\",\"bookIds\":[\"book-001\"]}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(1000));
-    }
-
-    // ==================== POST /api/v1/orders/checkout/vnpay ====================
-
-    @Test
-    void checkoutVNPay_missingUserId_returns401() throws Exception {
-        mockMvc.perform(post("/api/v1/orders/checkout/vnpay")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"addressId\":\"addr-001\",\"bookIds\":[\"book-001\"]}"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value(4001));
-    }
-
-    @Test
-    void checkoutVNPay_paymentClientReturnsNull_returns400() throws Exception {
-        when(orderService.createOrder(eq(USER_ID), any())).thenReturn(sampleOrderResponse);
-        when(paymentClient.createVNPayPayment(any())).thenReturn(null);
-
-        mockMvc.perform(post("/api/v1/orders/checkout/vnpay")
-                        .header("X-User-Id", USER_ID)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"addressId\":\"addr-001\",\"bookIds\":[\"book-001\"]}"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void checkoutVNPay_validRequest_returns200WithPaymentUrl() throws Exception {
-        CreatePaymentResponse paymentResponse = CreatePaymentResponse.builder()
-                .paymentUrl("https://sandbox.vnpayment.vn/pay?token=abc123")
-                .build();
-
-        when(orderService.createOrder(eq(USER_ID), any())).thenReturn(sampleOrderResponse);
-        when(paymentClient.createVNPayPayment(any()))
-                .thenReturn(ApiResponse.<CreatePaymentResponse>builder().result(paymentResponse).build());
-
-        mockMvc.perform(post("/api/v1/orders/checkout/vnpay")
-                        .header("X-User-Id", USER_ID)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"addressId\":\"addr-001\",\"bookIds\":[\"book-001\"]}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(1000))
-                .andExpect(jsonPath("$.result.paymentUrl").exists());
+                        .header("X-User-Id", USER_ID))
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.code").value(410));
     }
 
     // ==================== GET /api/v1/orders ====================

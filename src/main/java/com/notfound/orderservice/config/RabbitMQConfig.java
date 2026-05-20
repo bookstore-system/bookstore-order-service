@@ -15,53 +15,60 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-    // Payment events (consume)
-    public static final String PAYMENT_EXCHANGE = "payment.exchange";
-    public static final String PAYMENT_COMPLETED_QUEUE = "payment.completed.queue";
-    public static final String PAYMENT_COMPLETED_KEY = "payment.completed";
-
-    // Order events (publish)
     public static final String ORDER_EXCHANGE = "order.exchange";
-    public static final String ORDER_PLACED_QUEUE = "order.placed.queue";
-    public static final String ORDER_PLACED_KEY = "order.placed";
     public static final String ORDER_CANCELLED_QUEUE = "order.cancelled.queue";
     public static final String ORDER_CANCELLED_KEY = "order.cancelled";
 
+    // Saga command/event exchanges
+    public static final String COMMAND_EXCHANGE = "bookstore.commands";
+    public static final String EVENT_EXCHANGE = "bookstore.events";
+    public static final String ORDER_COMMANDS_QUEUE = "order.commands.queue";
+    public static final String ORDER_CREATE_COMMAND_KEY = "order.create.command";
+    public static final String ORDER_CONFIRM_COMMAND_KEY = "order.confirm.command";
+    public static final String ORDER_CANCEL_COMMAND_KEY = "order.cancel.command";
+    public static final String ORDER_CREATED_KEY = "order.created";
+    public static final String ORDER_CONFIRMED_KEY = "order.confirmed";
+    public static final String ORDER_FAILED_KEY = "order.failed";
+
     // Payment exchange + queue (khai báo để consume)
-    @Bean
-    public TopicExchange paymentExchange() {
-        return new TopicExchange(PAYMENT_EXCHANGE);
-    }
-
-    @Bean
-    public Queue paymentCompletedQueue() {
-        return new Queue(PAYMENT_COMPLETED_QUEUE, true);
-    }
-
-    @Bean
-    public Binding paymentCompletedBinding(Queue paymentCompletedQueue, TopicExchange paymentExchange) {
-        return BindingBuilder.bind(paymentCompletedQueue).to(paymentExchange).with(PAYMENT_COMPLETED_KEY);
-    }
-
-    // Order exchange + queues (publish events cho Notification Service)
     @Bean
     public TopicExchange orderExchange() {
         return new TopicExchange(ORDER_EXCHANGE);
     }
 
     @Bean
-    public Queue orderPlacedQueue() {
-        return new Queue(ORDER_PLACED_QUEUE, true);
+    public TopicExchange commandExchange() {
+        return new TopicExchange(COMMAND_EXCHANGE);
+    }
+
+    @Bean
+    public TopicExchange eventExchange() {
+        return new TopicExchange(EVENT_EXCHANGE);
+    }
+
+    @Bean
+    public Queue orderCommandsQueue() {
+        return new Queue(ORDER_COMMANDS_QUEUE, true);
+    }
+
+    @Bean
+    public Binding orderCreateCommandBinding(Queue orderCommandsQueue, TopicExchange commandExchange) {
+        return BindingBuilder.bind(orderCommandsQueue).to(commandExchange).with(ORDER_CREATE_COMMAND_KEY);
+    }
+
+    @Bean
+    public Binding orderConfirmCommandBinding(Queue orderCommandsQueue, TopicExchange commandExchange) {
+        return BindingBuilder.bind(orderCommandsQueue).to(commandExchange).with(ORDER_CONFIRM_COMMAND_KEY);
+    }
+
+    @Bean
+    public Binding orderCancelCommandBinding(Queue orderCommandsQueue, TopicExchange commandExchange) {
+        return BindingBuilder.bind(orderCommandsQueue).to(commandExchange).with(ORDER_CANCEL_COMMAND_KEY);
     }
 
     @Bean
     public Queue orderCancelledQueue() {
         return new Queue(ORDER_CANCELLED_QUEUE, true);
-    }
-
-    @Bean
-    public Binding orderPlacedBinding(Queue orderPlacedQueue, TopicExchange orderExchange) {
-        return BindingBuilder.bind(orderPlacedQueue).to(orderExchange).with(ORDER_PLACED_KEY);
     }
 
     @Bean
