@@ -19,6 +19,8 @@ import com.notfound.orderservice.model.enums.OrderStatus;
 public interface OrderRepository extends JpaRepository<Order, UUID> {
     List<Order> findByCustomerIdOrderByOrderDateDesc(String customerId);
 
+    java.util.Optional<Order> findBySagaId(UUID sagaId);
+
        long countByCustomerId(String customerId);
 
     Page<Order> findAllByOrderByOrderDateDesc(Pageable pageable);

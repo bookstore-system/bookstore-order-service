@@ -1,13 +1,8 @@
 package com.notfound.orderservice.controller;
 
-import com.notfound.orderservice.client.PaymentClient;
-import com.notfound.orderservice.exception.BusinessException;
-import com.notfound.orderservice.model.dto.request.CheckoutRequest;
-import com.notfound.orderservice.model.dto.request.PaymentRequest;
 import com.notfound.orderservice.model.dto.response.AdminStatsResponse;
 import com.notfound.orderservice.model.dto.response.ApiResponse;
 import com.notfound.orderservice.model.dto.response.CheckPurchasedResponse;
-import com.notfound.orderservice.model.dto.response.CreatePaymentResponse;
 import com.notfound.orderservice.model.dto.response.OrderResponse;
 import com.notfound.orderservice.model.dto.response.StatsResponse;
 import com.notfound.orderservice.model.dto.response.UserOrderSummaryResponse;
@@ -35,8 +30,20 @@ import java.util.UUID;
 public class OrderController {
 
     private final OrderService orderService;
-    private final PaymentClient paymentClient;
 
+    @PostMapping({"/checkout", "/checkout/**"})
+    public ResponseEntity<ApiResponse<Void>> legacyCheckoutGone() {
+        return ResponseEntity.status(410).body(ApiResponse.<Void>builder()
+                .code(410)
+                .message("Legacy checkout is disabled. Use POST /api/v1/checkout.")
+                .build());
+    }
+
+    /*
+     * Legacy checkout endpoints are intentionally disabled.
+     * Production checkout must go through bookstore-saga-orchestrator-service:
+     * POST /api/v1/checkout.
+     *
     @PostMapping("/checkout")
     public ResponseEntity<ApiResponse<OrderResponse>> checkout(
             @RequestHeader(value = "X-User-Id", required = false) String userId, 
@@ -177,6 +184,7 @@ public class OrderController {
             .build());
         }
 
+     */
     @GetMapping
     public ResponseEntity<ApiResponse<List<OrderResponse>>> getMyOrders(
             @RequestHeader(value = "X-User-Id", required = false) String userId) {

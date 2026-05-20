@@ -47,6 +47,9 @@ public class Order {
     @Column(name = "customer_id", nullable = false)
     String customerId;
 
+    @Column(name = "saga_id", unique = true)
+    UUID sagaId;
+
     // Store Promotion ID instead of mapping ManyToOne Promotion Entity
     @Column(name = "promotion_id")
     String promotionId;

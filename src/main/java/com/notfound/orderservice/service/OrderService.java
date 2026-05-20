@@ -7,7 +7,6 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import com.notfound.orderservice.model.dto.request.CheckoutRequest;
 import com.notfound.orderservice.model.dto.response.AdminStatsResponse;
 import com.notfound.orderservice.model.dto.response.OrderResponse;
 import com.notfound.orderservice.model.dto.response.StatsResponse;
@@ -16,8 +15,6 @@ import com.notfound.orderservice.model.dto.response.UserSpenderResponse;
 import com.notfound.orderservice.model.enums.OrderStatus;
 
 public interface OrderService {
-    OrderResponse createOrder(String customerId, CheckoutRequest request);
-    
     List<OrderResponse> getOrdersByUserId(String userId);
 
     OrderResponse getOrderById(UUID orderId);
@@ -50,5 +47,4 @@ public interface OrderService {
 
     boolean hasUserPurchasedAndReceivedBook(String userId, String bookId);
 
-    void updateOrderStatusByPayment(java.util.UUID orderId, OrderStatus newStatus);
 }

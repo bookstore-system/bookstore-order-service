@@ -113,6 +113,10 @@ class OrderServiceImplTest {
                 .build();
     }
 
+    /*
+     * Legacy createOrder tests removed with synchronous checkout flow.
+     * Saga order creation is covered by OrderCommandConsumerTest.
+     *
     // ==================== createOrder ====================
 
     @Test
@@ -315,6 +319,7 @@ class OrderServiceImplTest {
         verify(orderRepository).save(argThat(o -> o.getTotalAmount() < 100000.0));
     }
 
+     */
     // ==================== cancelOrder ====================
 
     @Test
@@ -432,6 +437,9 @@ class OrderServiceImplTest {
         verify(orderRepository).save(argThat(o -> o.getStatus() == OrderStatus.CONFIRMED));
     }
 
+    /*
+     * updateOrderStatusByPayment belonged to the legacy payment.completed consumer flow.
+     *
     // ==================== updateOrderStatusByPayment ====================
 
     @Test
@@ -456,6 +464,7 @@ class OrderServiceImplTest {
         verify(orderEventProducer, never()).publishOrderPlaced(any());
     }
 
+     */
     // ==================== getTotalRevenue ====================
 
     @Test

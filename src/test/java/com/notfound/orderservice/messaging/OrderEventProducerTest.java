@@ -33,19 +33,6 @@ class OrderEventProducerTest {
     }
 
     @Test
-    void publishOrderPlaced_sendsToCorrectExchangeAndRoutingKey() {
-        OrderPlacedEvent event = buildEvent();
-
-        producer.publishOrderPlaced(event);
-
-        verify(rabbitTemplate).convertAndSend(
-                RabbitMQConfig.ORDER_EXCHANGE,
-                RabbitMQConfig.ORDER_PLACED_KEY,
-                event
-        );
-    }
-
-    @Test
     void publishOrderCancelled_sendsToCorrectExchangeAndRoutingKey() {
         OrderPlacedEvent event = buildEvent();
 

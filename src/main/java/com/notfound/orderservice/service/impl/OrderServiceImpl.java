@@ -2,11 +2,9 @@ package com.notfound.orderservice.service.impl;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
@@ -16,21 +14,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.notfound.orderservice.client.BookClient;
-import com.notfound.orderservice.client.PromotionClient;
-import com.notfound.orderservice.client.UserClient;
-import com.notfound.orderservice.client.dto.AddressResponse;
-import com.notfound.orderservice.client.dto.BookBatchRequest;
-import com.notfound.orderservice.client.dto.BookDetailResponse;
-import com.notfound.orderservice.client.dto.PromotionApplyRequest;
-import com.notfound.orderservice.client.dto.PromotionApplyResponse;
 import com.notfound.orderservice.client.dto.ReduceStockItem;
 import com.notfound.orderservice.client.dto.ReduceStockRequest;
 import com.notfound.orderservice.exception.BusinessException;
 import com.notfound.orderservice.exception.ResourceNotFoundException;
 import com.notfound.orderservice.messaging.OrderEventProducer;
-import com.notfound.orderservice.model.dto.request.CheckoutRequest;
 import com.notfound.orderservice.model.dto.response.AdminStatsResponse;
-import com.notfound.orderservice.model.dto.response.ApiResponse;
 import com.notfound.orderservice.model.dto.response.OrderItemResponse;
 import com.notfound.orderservice.model.dto.response.OrderResponse;
 import com.notfound.orderservice.model.dto.response.StatsResponse;
@@ -52,15 +41,15 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class OrderServiceImpl implements OrderService {
 
-    private static final double TAX_RATE = 0.05;
-
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final BookClient bookClient;
-    private final UserClient userClient;
-    private final PromotionClient promotionClient;
     private final OrderEventProducer orderEventProducer;
 
+    /*
+     * Legacy synchronous checkout was removed from the public flow.
+     * New checkout orders are created by OrderCommandConsumer through the saga contract.
+     *
     @Override
     @Transactional
     public OrderResponse createOrder(String customerId, CheckoutRequest request) {
@@ -215,6 +204,7 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
+     */
     @Override
     public List<OrderResponse> getOrdersByUserId(String userId) {
         return orderRepository.findByCustomerIdOrderByOrderDateDesc(userId)
@@ -439,28 +429,6 @@ public class OrderServiceImpl implements OrderService {
                 .build();
     }
     
-    @Override
-    @Transactional
-    public void updateOrderStatusByPayment(java.util.UUID orderId, OrderStatus newStatus) {
-        log.info("updateOrderStatusByPayment: orderId={}, newStatus={}", orderId, newStatus);
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResourceNotFoundException("Order", orderId.toString()));
-        order.setStatus(newStatus);
-        orderRepository.save(order);
-
-        if (newStatus == OrderStatus.CONFIRMED) {
-            orderEventProducer.publishOrderPlaced(
-                com.notfound.orderservice.messaging.OrderPlacedEvent.builder()
-                    .orderId(order.getOrderID())
-                    .userId(order.getCustomerId())
-                    .totalAmount(order.getTotalAmount())
-                    .paymentMethod(order.getPaymentMethod())
-                    .createdAt(order.getOrderDate())
-                    .build()
-            );
-        }
-    }
-
     private OrderResponse mapToResponse(Order order) {
         List<OrderItemResponse> itemResponses = orderItemRepository
                 .findByOrder_OrderID(order.getOrderID())
