@@ -28,6 +28,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -81,9 +82,9 @@ class OrderCommandConsumerTest {
         when(objectMapper.readValue(message.getBody(), CreateOrderCommand.class)).thenReturn(command);
         when(processedMessageRepository.existsById(eventId)).thenReturn(false);
         when(orderRepository.findBySagaId(sagaId)).thenReturn(Optional.empty());
-        when(userClient.getUserAddress("user-1", "addr-1"))
+        when(userClient.getUserAddress(eq("Bearer access-token"), eq("user-1"), eq("addr-1")))
                 .thenReturn(ApiResponse.<AddressResponse>builder().result(address).build());
-        when(bookClient.getBatchBookDetails(any()))
+        when(bookClient.getBatchBookDetails(eq("Bearer access-token"), any()))
                 .thenReturn(ApiResponse.<List<BookDetailResponse>>builder().result(List.of(book)).build());
         when(orderRepository.save(any(Order.class))).thenAnswer(inv -> {
             Order order = inv.getArgument(0);
@@ -123,6 +124,7 @@ class OrderCommandConsumerTest {
                 .correlationId(sagaId)
                 .type(RabbitMQConfig.ORDER_CREATE_COMMAND_KEY)
                 .userId("user-1")
+                .authorization("Bearer access-token")
                 .addressId("addr-1")
                 .paymentMethod("VNPAY")
                 .bookIds(List.of("book-1"))

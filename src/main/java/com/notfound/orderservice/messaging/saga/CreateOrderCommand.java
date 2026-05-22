@@ -14,6 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 public class CreateOrderCommand extends BaseSagaMessage {
+    private String authorization;
     private String addressId;
     private String paymentMethod;
     private String note;
