@@ -98,6 +98,9 @@ public class OrderCommandConsumer {
                 if (command.getDiscountAmount() != null) {
                     order.setDiscountAmount(command.getDiscountAmount());
                 }
+                if (command.getShippingFee() != null) {
+                    order.setShippingFee(command.getShippingFee());
+                }
                 order.setStatus(OrderStatus.CONFIRMED);
                 order = orderRepository.save(order);
             }
@@ -126,7 +129,11 @@ public class OrderCommandConsumer {
     private Order createPendingOrder(CreateOrderCommand command) {
         validateCreateCommand(command);
 
-        AddressResponse address = userClient.getUserAddress(command.getUserId(), command.getAddressId()).getResult();
+        AddressResponse address = userClient.getUserAddress(
+                command.getAuthorization(),
+                command.getUserId(),
+                command.getAddressId()
+        ).getResult();
         if (address == null) {
             throw new BusinessException("Khong tim thay dia chi giao hang");
         }
@@ -150,7 +157,9 @@ public class OrderCommandConsumer {
 
         List<String> uniqueBookIds = new ArrayList<>(bookQuantities.keySet());
         List<BookDetailResponse> bookDetails = bookClient.getBatchBookDetails(
-                BookBatchRequest.builder().bookIds(uniqueBookIds).build()).getResult();
+                command.getAuthorization(),
+                BookBatchRequest.builder().bookIds(uniqueBookIds).build()
+        ).getResult();
         if (bookDetails == null || bookDetails.isEmpty()) {
             throw new BusinessException("Khong lay duoc thong tin sach tu he thong");
         }
@@ -200,6 +209,9 @@ public class OrderCommandConsumer {
         }
         if (command.getAddressId() == null || command.getAddressId().isBlank()) {
             throw new BusinessException("addressId is required");
+        }
+        if (command.getAuthorization() == null || command.getAuthorization().isBlank()) {
+            throw new BusinessException("authorization is required");
         }
         if (command.getPaymentMethod() == null || command.getPaymentMethod().isBlank()) {
             throw new BusinessException("paymentMethod is required");

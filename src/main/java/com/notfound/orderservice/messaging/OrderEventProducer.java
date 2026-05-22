@@ -6,6 +6,7 @@ import com.notfound.orderservice.messaging.saga.OrderCreatedEvent;
 import com.notfound.orderservice.messaging.saga.SagaFailureEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
@@ -18,27 +19,34 @@ public class OrderEventProducer {
 
     public void publishOrderCancelled(OrderPlacedEvent event) {
         log.info("Gui order.cancelled event: orderId={}", event.getOrderId());
-        rabbitTemplate.convertAndSend(RabbitMQConfig.ORDER_EXCHANGE, RabbitMQConfig.ORDER_CANCELLED_KEY, event);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.ORDER_EXCHANGE, RabbitMQConfig.ORDER_CANCELLED_KEY, event, this::removeJavaTypeHeaders);
     }
 
     public void publishSagaOrderCreated(OrderCreatedEvent event) {
         log.info("Publish saga order.created: sagaId={}, orderId={}", event.getSagaId(), event.getOrderId());
-        rabbitTemplate.convertAndSend(RabbitMQConfig.EVENT_EXCHANGE, RabbitMQConfig.ORDER_CREATED_KEY, event);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EVENT_EXCHANGE, RabbitMQConfig.ORDER_CREATED_KEY, event, this::removeJavaTypeHeaders);
     }
 
     public void publishSagaOrderConfirmed(BaseSagaMessage event) {
         log.info("Publish saga order.confirmed: sagaId={}, orderId={}", event.getSagaId(), event.getOrderId());
-        rabbitTemplate.convertAndSend(RabbitMQConfig.EVENT_EXCHANGE, RabbitMQConfig.ORDER_CONFIRMED_KEY, event);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EVENT_EXCHANGE, RabbitMQConfig.ORDER_CONFIRMED_KEY, event, this::removeJavaTypeHeaders);
     }
 
     public void publishSagaOrderCancelled(BaseSagaMessage event) {
         log.info("Publish saga order.cancelled: sagaId={}, orderId={}", event.getSagaId(), event.getOrderId());
-        rabbitTemplate.convertAndSend(RabbitMQConfig.EVENT_EXCHANGE, RabbitMQConfig.ORDER_CANCELLED_KEY, event);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EVENT_EXCHANGE, RabbitMQConfig.ORDER_CANCELLED_KEY, event, this::removeJavaTypeHeaders);
     }
 
     public void publishSagaOrderFailed(SagaFailureEvent event) {
         log.warn("Publish saga order.failed: sagaId={}, orderId={}, reason={}",
                 event.getSagaId(), event.getOrderId(), event.getReason());
-        rabbitTemplate.convertAndSend(RabbitMQConfig.EVENT_EXCHANGE, RabbitMQConfig.ORDER_FAILED_KEY, event);
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EVENT_EXCHANGE, RabbitMQConfig.ORDER_FAILED_KEY, event, this::removeJavaTypeHeaders);
+    }
+
+    private Message removeJavaTypeHeaders(Message message) {
+        message.getMessageProperties().getHeaders().remove("__TypeId__");
+        message.getMessageProperties().getHeaders().remove("__ContentTypeId__");
+        message.getMessageProperties().getHeaders().remove("__KeyTypeId__");
+        return message;
     }
 }
