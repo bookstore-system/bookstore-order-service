@@ -6,11 +6,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,9 +42,10 @@ class OrderEventProducerTest {
         producer.publishOrderCancelled(event);
 
         verify(rabbitTemplate).convertAndSend(
-                RabbitMQConfig.ORDER_EXCHANGE,
-                RabbitMQConfig.ORDER_CANCELLED_KEY,
-                event
+                eq(RabbitMQConfig.ORDER_EXCHANGE),
+                eq(RabbitMQConfig.ORDER_CANCELLED_KEY),
+                eq(event),
+                any(MessagePostProcessor.class)
         );
     }
 }

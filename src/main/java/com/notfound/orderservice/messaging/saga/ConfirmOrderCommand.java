@@ -16,6 +16,7 @@ import java.util.UUID;
 public class ConfirmOrderCommand extends BaseSagaMessage {
     private Double totalAmount;
     private Double discountAmount;
+    private Double shippingFee;
     private UUID paymentId;
     private String shippingOrderCode;
 }
