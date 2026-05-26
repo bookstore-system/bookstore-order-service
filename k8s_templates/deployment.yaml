@@ -1,0 +1,142 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service-deployment
+  labels:
+    app: user-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+      - name: user-service
+        image: truongdocker1/bookstore-user-service:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "prod"
+        - name: APP_JWT_KEYS_DIR
+          value: "/key"
+        - name: APP_JWT_EXPIRATION_MS
+          valueFrom:
+            configMapKeyRef:
+              name: user-service-config
+              key: APP_JWT_EXPIRATION_MS
+        - name: APP_JWT_REFRESH_EXPIRATION_MS
+          valueFrom:
+            configMapKeyRef:
+              name: user-service-config
+              key: APP_JWT_REFRESH_EXPIRATION_MS
+        - name: SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE
+          value: "20MB"
+        - name: SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE
+          value: "20MB"
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: user-service-config
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: user-service-config
+              key: DB_PORT
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: user-service-config
+              key: DB_NAME
+        - name: SPRING_DATA_REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: user-service-config
+              key: SPRING_DATA_REDIS_HOST
+        - name: SPRING_DATA_REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: user-service-config
+              key: SPRING_DATA_REDIS_PORT
+        - name: SPRING_DATA_REDIS_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: user-service-config
+              key: SPRING_DATA_REDIS_USERNAME
+        - name: SPRING_DATA_REDIS_SSL_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: user-service-config
+              key: SPRING_DATA_REDIS_SSL_ENABLED
+        - name: SPRING_DATA_REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: user-service-secret
+              key: SPRING_DATA_REDIS_PASSWORD
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: user-service-secret
+              key: DB_USERNAME
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: user-service-secret
+              key: DB_PASSWORD
+        - name: CLOUDINARY_ENABLED
+          valueFrom:
+            secretKeyRef:
+              name: user-service-secret
+              key: CLOUDINARY_ENABLED
+        - name: CLOUDINARY_CLOUD_NAME
+          valueFrom:
+            secretKeyRef:
+              name: user-service-secret
+              key: CLOUDINARY_CLOUD_NAME
+        - name: CLOUDINARY_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: user-service-secret
+              key: CLOUDINARY_API_KEY
+        - name: CLOUDINARY_API_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: user-service-secret
+              key: CLOUDINARY_API_SECRET
+        volumeMounts:
+        - name: jwt-keys
+          mountPath: /key
+          readOnly: true
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          failureThreshold: 6
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+      volumes:
+      - name: jwt-keys
+        secret:
+          secretName: jwt-keys
+          items:
+          - key: private.pem
+            path: private.pem
+          - key: public.pem
+            path: public.pem

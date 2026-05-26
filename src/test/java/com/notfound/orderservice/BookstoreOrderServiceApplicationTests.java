@@ -1,4 +1,4 @@
-package com.hamtech.bookstoreorderservice;
+package com.notfound.orderservice;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

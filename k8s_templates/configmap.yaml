@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-service-config
+data:
+  DB_HOST: "bookstore-db-do-user-36177370-0.h.db.ondigitalocean.com"
+  DB_PORT: "25060"
+  DB_NAME: "bookstore_user"
+  SPRING_DATA_REDIS_HOST: "redis-bookstore-do-user-36177370-0.j.db.ondigitalocean.com"
+  SPRING_DATA_REDIS_PORT: "25061"
+  SPRING_DATA_REDIS_USERNAME: "default"
+  SPRING_DATA_REDIS_SSL_ENABLED: "true"
+  APP_JWT_EXPIRATION_MS: "86400000"
+  APP_JWT_REFRESH_EXPIRATION_MS: "604800000"
