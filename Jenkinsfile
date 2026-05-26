@@ -72,8 +72,8 @@ pipeline {
                 kubectl create secret generic order-service-secret \
                   --from-literal=DB_USERNAME="$DB_USERNAME" \
                   --from-literal=DB_PASSWORD="$DB_PASSWORD" \
-                  --from-literal=RABBITMQ_USERNAME="guest" \
-                  --from-literal=RABBITMQ_PASSWORD="guest" \
+                  --from-literal=RABBITMQ_USERNAME="admin" \
+                  --from-literal=RABBITMQ_PASSWORD="123456" \
                   --dry-run=client -o yaml | kubectl apply -f -
 
                 # Deploy app.
