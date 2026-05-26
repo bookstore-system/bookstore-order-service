@@ -15,6 +15,13 @@ spring:
     username: ${RABBITMQ_USERNAME:guest}
     password: ${RABBITMQ_PASSWORD:guest}
     virtual-host: ${RABBITMQ_VIRTUAL_HOST:/}
+  hikari:
+    maximum-pool-size: ${DB_MAX_POOL_SIZE:4}
+    minimum-idle: ${DB_MIN_IDLE:1}
+    connection-timeout: ${DB_CONNECTION_TIMEOUT:30000}
+    idle-timeout: ${DB_IDLE_TIMEOUT:300000}
+    max-lifetime: ${DB_MAX_LIFETIME:600000}
+    keepalive-time: ${DB_KEEPALIVE_TIME:120000}
 
 book-service:
   url: ${BOOK_SERVICE_URL:http://book-service:8080}
