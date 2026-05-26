@@ -6,5 +6,6 @@ data:
   DB_HOST: "bookstore-db-do-user-36177370-0.h.db.ondigitalocean.com"
   DB_PORT: "25060"
   DB_NAME: "bookstore_order"
-  RABBITMQ_HOST: "rabbitmq"
+  RABBITMQ_HOST: "143.198.204.41"
   RABBITMQ_PORT: "5672"
+  RABBITMQ_VIRTUAL_HOST: "bookstore"
