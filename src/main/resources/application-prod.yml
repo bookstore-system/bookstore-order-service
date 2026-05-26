@@ -1,2 +1,28 @@
+spring:
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:bookstore_order}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ${DB_USERNAME:bookstore}
+    password: ${DB_PASSWORD:bookstore}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    database-platform: org.hibernate.dialect.MySQLDialect
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+book-service:
+  url: ${BOOK_SERVICE_URL:http://book-service:8080}
+
+user-service:
+  url: ${USER_SERVICE_URL:http://user-service:8080}
+
+promotion-service:
+  url: ${PROMOTION_SERVICE_URL:http://promotion-service:8080}
+
 payment-service:
-  url: ${PAYMENT_SERVICE_URL:http://payment-service:8085}
+  url: ${PAYMENT_SERVICE_URL:http://payment-service:8080}

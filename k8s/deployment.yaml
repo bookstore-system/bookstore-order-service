@@ -16,10 +16,81 @@ spec:
     spec:
       containers:
       - name: order-service
-        image: truongikpk/bookstore-order-service:latest
+        image: truongdocker1/bookstore-order-service:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
         env:
         - name: SPRING_PROFILES_ACTIVE
           value: "prod"
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: order-service-config
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: order-service-config
+              key: DB_PORT
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: order-service-config
+              key: DB_NAME
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: order-service-secret
+              key: DB_USERNAME
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: order-service-secret
+              key: DB_PASSWORD
+        - name: RABBITMQ_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: order-service-config
+              key: RABBITMQ_HOST
+        - name: RABBITMQ_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: order-service-config
+              key: RABBITMQ_PORT
+        - name: RABBITMQ_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: order-service-secret
+              key: RABBITMQ_USERNAME
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: order-service-secret
+              key: RABBITMQ_PASSWORD
+        - name: BOOK_SERVICE_URL
+          value: "http://book-service:8080"
+        - name: USER_SERVICE_URL
+          value: "http://user-service:8080"
+        - name: PROMOTION_SERVICE_URL
+          value: "http://promotion-service:8080"
+        - name: PAYMENT_SERVICE_URL
+          value: "http://payment-service:8080"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          failureThreshold: 6
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
