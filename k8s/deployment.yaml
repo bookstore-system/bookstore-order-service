@@ -68,6 +68,11 @@ spec:
             secretKeyRef:
               name: order-service-secret
               key: RABBITMQ_PASSWORD
+        - name: RABBITMQ_VIRTUAL_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: order-service-config
+              key: RABBITMQ_VIRTUAL_HOST
         - name: BOOK_SERVICE_URL
           value: "http://book-service:8080"
         - name: USER_SERVICE_URL
