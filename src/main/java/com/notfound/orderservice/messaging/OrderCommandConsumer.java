@@ -11,6 +11,7 @@ import com.notfound.orderservice.messaging.saga.BaseSagaMessage;
 import com.notfound.orderservice.messaging.saga.ConfirmOrderCommand;
 import com.notfound.orderservice.messaging.saga.CreateOrderCommand;
 import com.notfound.orderservice.messaging.saga.OrderCreatedEvent;
+import com.notfound.orderservice.messaging.saga.PriceSnapshotItem;
 import com.notfound.orderservice.messaging.saga.SagaFailureEvent;
 import com.notfound.orderservice.messaging.saga.StockItemPayload;
 import com.notfound.orderservice.model.entity.Order;
@@ -41,6 +42,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class OrderCommandConsumer {
+
+    private static final String PRICE_CHANGED_MESSAGE = "Giá đã thay đổi. Vui lòng kiểm tra lại giỏ hàng.";
 
     private final OrderRepository orderRepository;
     private final ProcessedMessageRepository processedMessageRepository;
@@ -154,6 +157,7 @@ public class OrderCommandConsumer {
         if (bookQuantities.isEmpty()) {
             throw new BusinessException("Danh sach sach can dat khong hop le");
         }
+        Map<String, PriceSnapshotItem> expectedPrices = buildExpectedPriceSnapshot(command, bookQuantities);
 
         List<String> uniqueBookIds = new ArrayList<>(bookQuantities.keySet());
         List<BookDetailResponse> bookDetails = bookClient.getBatchBookDetails(
@@ -191,6 +195,7 @@ public class OrderCommandConsumer {
                 throw new BusinessException("Khong tim thay gia cho sach: " + entry.getKey());
             }
             int quantity = Math.toIntExact(entry.getValue());
+            validateUnchangedPrice(entry.getKey(), quantity, unitPrice, expectedPrices);
             subtotal = subtotal.add(unitPrice.multiply(BigDecimal.valueOf(quantity)));
             orderItems.add(new OrderItem(order, entry.getKey(), quantity, unitPrice.doubleValue()));
         }
@@ -219,6 +224,72 @@ public class OrderCommandConsumer {
         if (command.getBookIds() == null || command.getBookIds().isEmpty()) {
             throw new BusinessException("bookIds is required");
         }
+        if (command.getPriceSnapshotItems() == null || command.getPriceSnapshotItems().isEmpty()) {
+            throw new BusinessException(PRICE_CHANGED_MESSAGE);
+        }
+    }
+
+    private Map<String, PriceSnapshotItem> buildExpectedPriceSnapshot(
+            CreateOrderCommand command,
+            Map<String, Long> bookQuantities
+    ) {
+        Map<String, PriceSnapshotItem> snapshot = command.getPriceSnapshotItems().stream()
+                .collect(Collectors.toMap(
+                        item -> normalizeBookId(item.getBookId()),
+                        this::normalizeSnapshotItem,
+                        this::mergeSnapshotItems
+                ));
+
+        if (snapshot.size() != bookQuantities.size()) {
+            throw new BusinessException(PRICE_CHANGED_MESSAGE);
+        }
+
+        for (Map.Entry<String, Long> entry : bookQuantities.entrySet()) {
+            PriceSnapshotItem item = snapshot.get(entry.getKey());
+            if (item == null || item.getQuantity() == null || item.getQuantity() != Math.toIntExact(entry.getValue())) {
+                throw new BusinessException(PRICE_CHANGED_MESSAGE);
+            }
+        }
+        return snapshot;
+    }
+
+    private PriceSnapshotItem normalizeSnapshotItem(PriceSnapshotItem item) {
+        String bookId = normalizeBookId(item.getBookId());
+        if (bookId.isBlank() || item.getQuantity() == null || item.getQuantity() < 1 || item.getUnitPrice() == null) {
+            throw new BusinessException(PRICE_CHANGED_MESSAGE);
+        }
+        return PriceSnapshotItem.builder()
+                .bookId(bookId)
+                .quantity(item.getQuantity())
+                .unitPrice(item.getUnitPrice())
+                .build();
+    }
+
+    private PriceSnapshotItem mergeSnapshotItems(PriceSnapshotItem left, PriceSnapshotItem right) {
+        if (left.getUnitPrice().compareTo(right.getUnitPrice()) != 0) {
+            throw new BusinessException(PRICE_CHANGED_MESSAGE);
+        }
+        left.setQuantity(left.getQuantity() + right.getQuantity());
+        return left;
+    }
+
+    private void validateUnchangedPrice(
+            String bookId,
+            int quantity,
+            BigDecimal currentUnitPrice,
+            Map<String, PriceSnapshotItem> expectedPrices
+    ) {
+        PriceSnapshotItem expected = expectedPrices.get(bookId);
+        if (expected == null || expected.getQuantity() == null || expected.getQuantity() != quantity) {
+            throw new BusinessException(PRICE_CHANGED_MESSAGE);
+        }
+        if (expected.getUnitPrice() == null || expected.getUnitPrice().compareTo(currentUnitPrice) != 0) {
+            throw new BusinessException(PRICE_CHANGED_MESSAGE);
+        }
+    }
+
+    private String normalizeBookId(String bookId) {
+        return bookId == null ? "" : bookId.trim();
     }
 
     private OrderCreatedEvent buildOrderCreatedEvent(CreateOrderCommand command, Order order) {

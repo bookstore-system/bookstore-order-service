@@ -21,4 +21,5 @@ public class CreateOrderCommand extends BaseSagaMessage {
     private String discountCode;
     private String redirectUrl;
     private List<String> bookIds;
+    private List<PriceSnapshotItem> priceSnapshotItems;
 }
