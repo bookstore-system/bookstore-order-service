@@ -7,6 +7,7 @@ import com.notfound.orderservice.client.dto.BookDetailResponse;
 import com.notfound.orderservice.config.RabbitMQConfig;
 import com.notfound.orderservice.messaging.saga.CreateOrderCommand;
 import com.notfound.orderservice.messaging.saga.OrderCreatedEvent;
+import com.notfound.orderservice.messaging.saga.PriceSnapshotItem;
 import com.notfound.orderservice.model.dto.response.ApiResponse;
 import com.notfound.orderservice.model.entity.Order;
 import com.notfound.orderservice.repository.OrderRepository;
@@ -117,6 +118,39 @@ class OrderCommandConsumerTest {
         verify(orderEventProducer, never()).publishSagaOrderCreated(any());
     }
 
+    @Test
+    void createCommand_priceChanged_publishesFailedWithoutSavingOrder() throws Exception {
+        CreateOrderCommand command = createCommand();
+        Message message = commandMessage(RabbitMQConfig.ORDER_CREATE_COMMAND_KEY);
+        AddressResponse address = AddressResponse.builder()
+                .recipientName("Nguyen Van A")
+                .phoneNumber("0123456789")
+                .fullAddress("123 Nguyen Trai")
+                .province("HCM")
+                .district("Q1")
+                .ward("P1")
+                .build();
+        BookDetailResponse book = BookDetailResponse.builder()
+                .bookId("book-1")
+                .price(new BigDecimal("100000"))
+                .stockQuantity(1)
+                .build();
+
+        when(objectMapper.readValue(message.getBody(), CreateOrderCommand.class)).thenReturn(command);
+        when(processedMessageRepository.existsById(eventId)).thenReturn(false);
+        when(orderRepository.findBySagaId(sagaId)).thenReturn(Optional.empty());
+        when(userClient.getUserAddress(eq("Bearer access-token"), eq("user-1"), eq("addr-1")))
+                .thenReturn(ApiResponse.<AddressResponse>builder().result(address).build());
+        when(bookClient.getBatchBookDetails(eq("Bearer access-token"), any()))
+                .thenReturn(ApiResponse.<List<BookDetailResponse>>builder().result(List.of(book)).build());
+
+        consumer.handleOrderCommand(message);
+
+        verify(orderRepository, never()).save(any(Order.class));
+        verify(orderEventProducer, never()).publishSagaOrderCreated(any());
+        verify(orderEventProducer).publishSagaOrderFailed(any());
+    }
+
     private CreateOrderCommand createCommand() {
         return CreateOrderCommand.builder()
                 .eventId(eventId)
@@ -128,6 +162,11 @@ class OrderCommandConsumerTest {
                 .addressId("addr-1")
                 .paymentMethod("VNPAY")
                 .bookIds(List.of("book-1"))
+                .priceSnapshotItems(List.of(PriceSnapshotItem.builder()
+                        .bookId("book-1")
+                        .quantity(1)
+                        .unitPrice(new BigDecimal("90000"))
+                        .build()))
                 .build();
     }
 
