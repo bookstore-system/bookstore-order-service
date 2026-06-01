@@ -73,4 +73,18 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     @Query("SELECT CASE WHEN COUNT(oi) > 0 THEN true ELSE false END FROM Order o JOIN o.orderItems oi " +
            "WHERE o.customerId = :userId AND oi.bookId = :bookId AND o.status = :status")
     boolean existsByCustomerIdAndBookIdAndStatus(@Param("userId") String userId, @Param("bookId") String bookId, @Param("status") OrderStatus status);
+
+    @Query("""
+            SELECT COALESCE(SUM(oi.subtotal), 0) AS totalRevenue,
+                   COUNT(DISTINCT oi.bookId) AS soldBookCount
+            FROM Order o JOIN o.orderItems oi
+            WHERE o.status IN ('DELIVERED', 'COMPLETED')
+            """)
+    BookSalesStatsProjection getBookSalesStats();
+
+    interface BookSalesStatsProjection {
+        Double getTotalRevenue();
+
+        Long getSoldBookCount();
+    }
 }
