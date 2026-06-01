@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 public class BookDetailResponse {
     private String bookId;
     private String title;
+    private String imageUrl;
     private BigDecimal price;
     private BigDecimal salePrice;
     private Integer stockQuantity;
