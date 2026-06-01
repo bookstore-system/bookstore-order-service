@@ -1,7 +1,5 @@
 package com.notfound.orderservice.client.dto;
 
-import java.math.BigDecimal;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,11 +9,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class BookDetailResponse {
-    private String bookId;
+public class BookBatchLookupItemResponse {
+    private String id;
     private String title;
-    private String imageUrl;
-    private BigDecimal price;
-    private BigDecimal salePrice;
-    private Integer stockQuantity;
+    private String thumbnailUrl;
 }

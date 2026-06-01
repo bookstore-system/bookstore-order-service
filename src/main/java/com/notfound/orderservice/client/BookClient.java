@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 
 import com.notfound.orderservice.client.dto.BookBatchRequest;
+import com.notfound.orderservice.client.dto.BookBatchLookupRequest;
+import com.notfound.orderservice.client.dto.BookBatchLookupResponse;
 import com.notfound.orderservice.client.dto.BookDetailResponse;
 import com.notfound.orderservice.client.dto.ReduceStockRequest;
 import com.notfound.orderservice.model.dto.response.ApiResponse;
@@ -17,9 +19,12 @@ public interface BookClient {
     
     @PostMapping("/api/v1/books/batch-details")
     ApiResponse<List<BookDetailResponse>> getBatchBookDetails(
-            @RequestHeader("Authorization") String authorization,
+            @RequestHeader(value = "Authorization", required = false) String authorization,
             @RequestBody BookBatchRequest request
     );
+
+    @PostMapping("/api/v1/books/batch")
+    ApiResponse<BookBatchLookupResponse> getBooksBatch(@RequestBody BookBatchLookupRequest request);
 
     @PostMapping("/api/v1/books/reduce-stock")
     ApiResponse<Void> reduceStock(@RequestBody ReduceStockRequest request);

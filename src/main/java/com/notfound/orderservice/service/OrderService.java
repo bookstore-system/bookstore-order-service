@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import com.notfound.orderservice.model.dto.response.AdminStatsResponse;
+import com.notfound.orderservice.model.dto.response.BookSalesStatsResponse;
 import com.notfound.orderservice.model.dto.response.OrderResponse;
 import com.notfound.orderservice.model.dto.response.StatsResponse;
 import com.notfound.orderservice.model.dto.response.UserOrderSummaryResponse;
@@ -44,6 +45,8 @@ public interface OrderService {
     Long countOrdersByUserId(String userId);
 
     AdminStatsResponse getAdminAiStats();
+
+    BookSalesStatsResponse getBookSalesStats();
 
     boolean hasUserPurchasedAndReceivedBook(String userId, String bookId);
 
