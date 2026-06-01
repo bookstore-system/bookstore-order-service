@@ -14,12 +14,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.notfound.orderservice.client.BookClient;
+import com.notfound.orderservice.client.dto.BookBatchLookupItemResponse;
+import com.notfound.orderservice.client.dto.BookBatchLookupRequest;
+import com.notfound.orderservice.client.dto.BookBatchLookupResponse;
+import com.notfound.orderservice.client.dto.BookDetailResponse;
 import com.notfound.orderservice.client.dto.ReduceStockItem;
 import com.notfound.orderservice.client.dto.ReduceStockRequest;
 import com.notfound.orderservice.exception.BusinessException;
 import com.notfound.orderservice.exception.ResourceNotFoundException;
 import com.notfound.orderservice.messaging.OrderEventProducer;
 import com.notfound.orderservice.model.dto.response.AdminStatsResponse;
+import com.notfound.orderservice.model.dto.response.BookSalesStatsResponse;
 import com.notfound.orderservice.model.dto.response.OrderItemResponse;
 import com.notfound.orderservice.model.dto.response.OrderResponse;
 import com.notfound.orderservice.model.dto.response.StatsResponse;
@@ -428,6 +433,21 @@ public class OrderServiceImpl implements OrderService {
                 .currency("VND")
                 .build();
     }
+
+    @Override
+    public BookSalesStatsResponse getBookSalesStats() {
+        OrderRepository.BookSalesStatsProjection stats = orderRepository.getBookSalesStats();
+        double totalRevenue = stats != null && stats.getTotalRevenue() != null ? stats.getTotalRevenue() : 0.0;
+        long soldBookCount = stats != null && stats.getSoldBookCount() != null ? stats.getSoldBookCount() : 0L;
+        double averageRevenuePerBook = soldBookCount > 0 ? totalRevenue / soldBookCount : 0.0;
+
+        return BookSalesStatsResponse.builder()
+                .totalRevenue(BigDecimal.valueOf(totalRevenue))
+                .soldBookCount(soldBookCount)
+                .averageRevenuePerBook(BigDecimal.valueOf(averageRevenuePerBook))
+                .currency("VND")
+                .build();
+    }
     
     private OrderResponse mapToResponse(Order order) {
         List<OrderItemResponse> itemResponses = orderItemRepository
@@ -441,6 +461,7 @@ public class OrderServiceImpl implements OrderService {
                         .subtotal(item.getSubtotal())
                         .build())
                 .collect(Collectors.toList());
+        enrichBookDetails(itemResponses);
 
         OrderResponse.OrderResponseBuilder builder = OrderResponse.builder()
                 .id(order.getOrderID())
@@ -467,5 +488,40 @@ public class OrderServiceImpl implements OrderService {
         }
 
         return builder.build();
+    }
+
+    private void enrichBookDetails(List<OrderItemResponse> itemResponses) {
+        List<String> bookIds = itemResponses.stream()
+                .map(OrderItemResponse::getBookId)
+                .filter(bookId -> bookId != null && !bookId.isBlank())
+                .distinct()
+                .collect(Collectors.toList());
+        if (bookIds.isEmpty()) {
+            return;
+        }
+
+        try {
+            BookBatchLookupResponse response = bookClient.getBooksBatch(
+                    BookBatchLookupRequest.builder().ids(bookIds).build()
+            ).getResult();
+            List<BookBatchLookupItemResponse> books = response != null ? response.getItems() : null;
+            if (books == null || books.isEmpty()) {
+                return;
+            }
+
+            Map<String, BookBatchLookupItemResponse> bookById = books.stream()
+                    .filter(book -> book.getId() != null)
+                    .collect(Collectors.toMap(BookBatchLookupItemResponse::getId, book -> book, (first, ignored) -> first));
+
+            itemResponses.forEach(item -> {
+                BookBatchLookupItemResponse book = bookById.get(item.getBookId());
+                if (book != null) {
+                    item.setBookTitle(book.getTitle());
+                    item.setBookImageUrl(book.getThumbnailUrl());
+                }
+            });
+        } catch (Exception e) {
+            log.warn("Unable to enrich order item book details: {}", e.getMessage());
+        }
     }
 }

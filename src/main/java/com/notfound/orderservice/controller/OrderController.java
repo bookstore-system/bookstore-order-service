@@ -2,6 +2,7 @@ package com.notfound.orderservice.controller;
 
 import com.notfound.orderservice.model.dto.response.AdminStatsResponse;
 import com.notfound.orderservice.model.dto.response.ApiResponse;
+import com.notfound.orderservice.model.dto.response.BookSalesStatsResponse;
 import com.notfound.orderservice.model.dto.response.CheckPurchasedResponse;
 import com.notfound.orderservice.model.dto.response.OrderResponse;
 import com.notfound.orderservice.model.dto.response.StatsResponse;
@@ -407,6 +408,15 @@ public class OrderController {
     @GetMapping("/admin/stats")
     public ResponseEntity<AdminStatsResponse> getAdminStats() {
         return ResponseEntity.ok(orderService.getAdminAiStats());
+    }
+
+    @GetMapping("/admin/book-sales-stats")
+    public ResponseEntity<ApiResponse<BookSalesStatsResponse>> getBookSalesStats() {
+        return ResponseEntity.ok(ApiResponse.<BookSalesStatsResponse>builder()
+                .code(1000)
+                .message("Láº¥y thá»‘ng kÃª doanh thu theo sÃ¡ch thÃ nh cÃ´ng")
+                .result(orderService.getBookSalesStats())
+                .build());
     }
 
     @GetMapping("/admin/status/{status}")
